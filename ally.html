@@ -301,7 +301,7 @@
     .ally-empty #channel-grid, .ally-empty .header-btns, .ally-empty #cycle-switch { display: none !important; }
     /* 盟友版：隱藏所有管理功能 */
     .ally-mode .btn-cd, .ally-mode .btn-admin, .ally-mode .btn-share, .ally-mode .btn-discord-set,
-    .ally-mode #discord-toggle-btn, .ally-mode #online-btn, .ally-mode #cycle-switch,
+    .ally-mode #discord-toggle-btn, .ally-mode #cycle-switch,
     .ally-mode .cycle-badge,
     .ally-mode .header-btns .btn-ch.reset { display: none !important; }
     .range-row { display: flex; align-items: center; gap: 0.5rem; }
@@ -1446,8 +1446,48 @@
     // 每秒執行一次：掃描一定會做（通知不能停），畫面只在分頁可見時才更新
     function tick() {
       scanAllBosses();
+      autoResetStale(Date.now());
       if (!document.hidden) renderChannels();
       updatePopout();
+    }
+
+    /* ==========================================
+       自動重置過期記錄：已經重生超過 STALE_RESET_HOURS（預設 48 小時）、
+       一直沒人再擊殺，而且不是自動巡迴的頻道，記錄視為過期，自動清除（等同按「重置」）。
+       - 自動巡迴的頻道會一直推算下一輪，不算過期。
+       - 區間王一律是手動，以「最晚重生時間」起算。
+       - 用資料庫交易（transaction）清除：清除前會再用伺服器上的最新資料確認一次，
+         如果剛好有人重新擊殺，就不會被誤刪。
+       - 只有公會版會執行（Cloudflare Worker 也會做同樣的事，沒人開網頁時由它負責）。
+    ========================================== */
+    const STALE_RESET_HOURS = 48;
+    const STALE_RESET_MS = STALE_RESET_HOURS * 60 * 60 * 1000;
+    let lastStaleCheck = 0;
+
+    function isStaleChannel(info, boss, ch, now) {
+      if (!info || !info.killTime) return false;
+      const mode = getBossCycleMode(boss, ch);
+      if (mode !== 'manual') return false;
+      const st = resolveChannelState(info, boss, getBossCdSec(boss.id), now, mode, getBossManualSince(boss, ch));
+      return now - (st.kill + boss.maxMin * 60 * 1000) > STALE_RESET_MS;
+    }
+
+    function autoResetStale(now) {
+      if (ALLY_MODE || !isVersionValid) return;
+      if (now - lastStaleCheck < 5 * 60 * 1000) return; // 每 5 分鐘檢查一次就夠了
+      lastStaleCheck = now;
+      let budget = 20;
+      bosses.forEach(boss => {
+        for (let ch = 1; ch <= 60 && budget > 0; ch++) {
+          if (!isStaleChannel(getChannelData(boss.id, ch), boss, ch, now)) continue;
+          budget--;
+          db.ref(`rooms/${roomId}/${boss.id}/ch${ch}`).transaction(cur => {
+            if (!cur || typeof cur !== 'object') return undefined;
+            const info = { killTime: cur.killTime || null, playerCdStartTime: cur.playerCdStartTime || null };
+            return isStaleChannel(info, boss, ch, Date.now()) ? null : undefined; // 伺服器上的資料已更新就不動
+          }).catch(() => {});
+        }
+      });
     }
     document.addEventListener('visibilitychange', () => {
       if (!document.hidden) { scanAllBosses(); renderChannels(); }
@@ -2083,16 +2123,15 @@
         }, 60 * 1000);
         presenceRefresh = setInterval(renderOnline, 30 * 1000);
 
-        if (!ALLY_MODE) {
-          db.ref(`presence/${roomId}`).on('value', snap => {
-            presenceCache = snap.val() || {};
-            renderOnline();
-          }, () => {});
-          db.ref(`allyPresence/${roomId}`).on('value', snap => {
-            allyPresenceCache = snap.val() || {};
-            renderOnline();
-          }, () => {});
-        }
+        // 公會成員與盟友的線上名單，兩邊的網頁都看得到（盟友只能讀、不能寫公會的名單）
+        db.ref(`presence/${roomId}`).on('value', snap => {
+          presenceCache = snap.val() || {};
+          renderOnline();
+        }, () => {});
+        db.ref(`allyPresence/${roomId}`).on('value', snap => {
+          allyPresenceCache = snap.val() || {};
+          renderOnline();
+        }, () => {});
 
         if (!myNick) promptNickname(); // 舊版已解鎖、尚未設定暱稱的人
       }).catch(() => { presenceStarted = false; });
@@ -2106,7 +2145,8 @@
       try {
         db.ref('.info/connected').off();
         db.ref('.info/serverTimeOffset').off();
-        if (!ALLY_MODE) { db.ref(`presence/${roomId}`).off(); db.ref(`allyPresence/${roomId}`).off(); }
+        db.ref(`presence/${roomId}`).off();
+        db.ref(`allyPresence/${roomId}`).off();
       } catch (e) {}
       if (presenceRef) {
         const ref = presenceRef;
@@ -2152,12 +2192,18 @@
         .concat(Object.keys(allies).map(k => allies[k]).sort(sortFn));
     }
 
+    // 對方陣營的標籤：公會版看到盟友標「聯盟」，盟友版看到公會成員標「公會」
+    function crossTag(u) {
+      if (ALLY_MODE) return u.ally ? null : '公會';
+      return u.ally ? '聯盟' : null;
+    }
+
     function fillOnlineList(users) {
       const list = document.getElementById('onlineList');
       document.getElementById('onlineCount').textContent = users.length;
-      const allyN = users.filter(u => u.ally).length;
-      const allyEl = document.getElementById('onlineAllyCount');
-      if (allyEl) allyEl.textContent = allyN ? `（含聯盟 ${allyN} 人）` : '';
+      const crossN = users.filter(u => crossTag(u)).length;
+      const crossEl = document.getElementById('onlineAllyCount');
+      if (crossEl) crossEl.textContent = crossN ? `（含${ALLY_MODE ? '公會' : '聯盟'} ${crossN} 人）` : '';
       list.innerHTML = '';
       if (!users.length) {
         const empty = document.createElement('div');
@@ -2167,23 +2213,20 @@
         return;
       }
       users.forEach(u => {
+        const tagText = crossTag(u);
         const row = document.createElement('div');
-        row.className = 'online-row' + (u.uid === myUid ? ' me' : '') + (u.ally ? ' ally' : '');
+        row.className = 'online-row' + (u.uid === myUid ? ' me' : '') + (tagText ? ' ally' : '');
         const dot = document.createElement('span'); dot.className = 'dot';
+        row.appendChild(dot);
+        if (tagText) {
+          const tag = document.createElement('span'); tag.className = 'ally-tag'; tag.textContent = tagText;
+          row.appendChild(tag);
+        }
         const nm = document.createElement('span'); nm.className = 'nm';
         nm.textContent = u.name + (u.uid === myUid ? '（我）' : '');
-        if (u.ally) {
-          const tag = document.createElement('span'); tag.className = 'ally-tag'; tag.textContent = '聯盟';
-          row.appendChild(dot); row.appendChild(tag); row.appendChild(nm);
-          const metaA = document.createElement('span'); metaA.className = 'meta';
-          metaA.textContent = `上線 ${formatTime(new Date(u.since))}` + (u.tabs > 1 ? ` ・${u.tabs} 個分頁` : '');
-          row.appendChild(metaA);
-          list.appendChild(row);
-          return;
-        }
         const meta = document.createElement('span'); meta.className = 'meta';
         meta.textContent = `上線 ${formatTime(new Date(u.since))}` + (u.tabs > 1 ? ` ・${u.tabs} 個分頁` : '');
-        row.appendChild(dot); row.appendChild(nm); row.appendChild(meta);
+        row.appendChild(nm); row.appendChild(meta);
         list.appendChild(row);
       });
     }
@@ -2192,8 +2235,8 @@
       const users = getOnlineUsers();
       const btn = document.getElementById('online-btn');
       if (btn) {
-        const allyN = users.filter(u => u.ally).length;
-        btn.textContent = `線上 ${users.length} 人` + (allyN ? `（聯盟 ${allyN}）` : '');
+        const crossN = users.filter(u => crossTag(u)).length;
+        btn.textContent = `線上 ${users.length} 人` + (crossN ? `（${ALLY_MODE ? '公會' : '聯盟'} ${crossN}）` : '');
       }
       const modal = document.getElementById('onlineModal');
       if (modal && modal.style.display === 'flex') fillOnlineList(users);
@@ -2226,8 +2269,10 @@
       document.getElementById('nickHint').style.display = 'none';
       updatePresenceName();
       // 本機先行更新，不必等伺服器回傳
-      Object.keys(presenceCache || {}).forEach(k => {
-        if (presenceCache[k] && presenceCache[k].uid === myUid) presenceCache[k].name = nick;
+      [presenceCache, allyPresenceCache].forEach(cache => {
+        Object.keys(cache || {}).forEach(k => {
+          if (cache[k] && cache[k].uid === myUid) cache[k].name = nick;
+        });
       });
       renderOnline();
     }
