@@ -1918,7 +1918,7 @@
       .row .t{flex:1;min-width:0;font-size:1rem;color:#8a7d66;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-variant-numeric:tabular-nums}
       .nt{display:flex;gap:0.1667rem;flex:0 0 auto}
       .asg{flex:0 0 3.2rem;display:flex;gap:0.1667rem}
-      .chip{width:1.5rem;height:1.5rem;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-style:normal;font-size:0.8333rem;font-weight:bold;line-height:1;cursor:pointer;border:2px solid transparent;box-shadow:0 1px 2px rgba(0,0,0,.3);transition:transform .1s;flex:0 0 auto;box-sizing:border-box}
+      .chip{width:1.5rem;height:1.5rem;padding:0;margin:0;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-style:normal;font-size:0.8333rem;font-weight:bold;line-height:1;cursor:pointer;border:2px solid transparent;box-shadow:0 1px 2px rgba(0,0,0,.3);transition:transform .1s;flex:0 0 auto;box-sizing:border-box}
       .chip.two{font-size:0.5833rem;letter-spacing:-0.03em}
       .chip.ally{border-radius:0.4rem}
       .chip.me{border-color:#f3c969;box-shadow:0 0 0 1px #fff,0 0 5px rgba(243,201,105,.95)}
@@ -1959,7 +1959,7 @@
       .row .rs{background:#ece6d6;color:#6b5f4c}
       .row .rs:hover{background:#ddd3bb}
       .row .rs.arm{background:#e02424;color:#fff}
-      .empty{padding:2rem 0.5rem;color:#9a8d73;text-align:center;line-height:1.8;font-size:1rem}
+      .emptymsg{padding:2rem 0.5rem;color:#9a8d73;text-align:center;line-height:1.8;font-size:1rem}
     `;
 
     /* ==========================================
@@ -2236,8 +2236,8 @@
                 + `<button type="button" class="rs" data-act="reset" data-ch="${r.ch}">重置</button></div>`;
             }).join('')
           : (popMineOnly
-              ? '<div class="empty">目前沒有分配給你的頻道<br>在頻道旁點「＋」就能認領</div>'
-              : '<div class="empty">目前沒有計時中的頻道<br>在上方輸入頻道號碼，按「擊殺」開始計時</div>');
+              ? '<div class="emptymsg">目前沒有分配給你的頻道<br>在頻道旁點「＋」就能認領</div>'
+              : '<div class="emptymsg">目前沒有計時中的頻道<br>在上方輸入頻道號碼，按「擊殺」開始計時</div>');
         popFlash = null;
         popCdEls = {};
         list.querySelectorAll('.cd[data-ch]').forEach(el => { popCdEls[el.dataset.ch] = el; });
