@@ -1488,6 +1488,7 @@
           }).catch(() => {});
         }
       });
+      autoClearAssign(now);
     }
     document.addEventListener('visibilitychange', () => {
       if (!document.hidden) { scanAllBosses(); renderChannels(); }
@@ -1640,7 +1641,7 @@
     }
 
     /* ==========================================
-       彈出置頂小視窗（預設 420x340，可自行拉大縮小，內容會等比縮放）：只顯示「頻道」「預計重生時間」與擊殺鈕，與主視窗即時同步。
+       彈出置頂小視窗（預設 400x330，可自行拉大縮小，內容會等比縮放）：只顯示「頻道」「預計重生時間」與擊殺鈕，與主視窗即時同步。
        - Chrome / Edge：使用 Document Picture-in-Picture，視窗會永遠浮在最上層。
        - 其他瀏覽器：退回一般小視窗（無法保證置頂，可搭配作業系統的「視窗置頂」工具）。
        小視窗綁定按下按鈕當下的那隻王，之後主視窗切換別隻王也不受影響。
@@ -1655,7 +1656,7 @@
 
     const POPOUT_CSS = `
       *{box-sizing:border-box}
-      html{font-size:clamp(9px,2.9412vw,28px)}
+      html{font-size:clamp(9px,2.6738vw,28px)}
       html,body{margin:0;height:100%}
       body{display:flex;flex-direction:column;background:#f4eee0;color:#3a3226;font-family:"Microsoft JhengHei","PingFang TC",sans-serif;font-size:1rem;user-select:none}
       button{font-family:inherit}
@@ -1692,6 +1693,32 @@
       .row .c{flex:0 0 3.3rem;font-weight:bold;font-size:1.25rem;white-space:nowrap}
       .row .t{flex:1;min-width:0;font-size:1rem;color:#8a7d66;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-variant-numeric:tabular-nums}
       .nt{display:flex;gap:0.1667rem;flex:0 0 auto}
+      .asg{flex:0 0 3.4rem;display:flex;gap:0.1667rem}
+      .chip{width:1.6rem;height:1.6rem;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-style:normal;font-size:0.9167rem;font-weight:bold;line-height:1;cursor:pointer;border:2px solid transparent;box-shadow:0 1px 2px rgba(0,0,0,.3);transition:transform .1s;flex:0 0 auto;box-sizing:border-box}
+      .chip.two{font-size:0.6667rem;letter-spacing:-0.02em}
+      .chip.ally{border-radius:0.4rem}
+      .chip.me{border-color:#f3c969;box-shadow:0 0 0 1px #fff,0 0 5px rgba(243,201,105,.95)}
+      .chip:hover{transform:scale(1.12)}
+      .chip.empty{background:transparent;border:1px dashed #b8986c;color:#b8986c;box-shadow:none;font-weight:normal}
+      .chip.empty.second{opacity:.5}
+      .chip.ghost{visibility:hidden;pointer-events:none}
+      .row.idle{border-left-color:#c8c0ae;background:#faf8f3}
+      .row.idle .cd{color:#a39a85;font-size:1rem}
+      .row.idle .t{opacity:.55}
+      .row.idle .rs{visibility:hidden}
+      .hsort.on{background:#f3c969;color:#4a3519;font-weight:bold}
+      .amenu{position:fixed;z-index:30;width:16rem;max-width:94vw;background:#fff;border:1px solid #d8cdb2;border-radius:0.6667rem;box-shadow:0 6px 22px rgba(60,40,10,.35);overflow:hidden}
+      .amenu .ah{background:linear-gradient(135deg,#5c4327,#7d5c36);color:#fff;font-size:0.9167rem;padding:0.5rem 0.75rem}
+      .amenu .al{max-height:12rem;overflow-y:auto}
+      .amenu .ai{display:flex;align-items:center;gap:0.5rem;padding:0.4167rem 0.75rem;cursor:pointer;font-size:1rem}
+      .amenu .ai:hover{background:#f6ecd7}
+      .amenu .ai .nm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+      .amenu .ai .ck{color:#16a34a;font-weight:bold}
+      .amenu .ai.dis{opacity:.45;cursor:not-allowed}
+      .amenu .ai .chip{cursor:inherit}
+      .amenu .ahint{padding:0.3333rem 0.75rem;font-size:0.8333rem;color:#c0392b;min-height:1.4rem}
+      .amenu .aclr{display:block;width:100%;border:0;border-top:1px solid #eee4cf;background:#faf6ea;color:#8a3b2a;font-size:0.9167rem;padding:0.5rem;cursor:pointer}
+      .amenu .aclr:hover{background:#f3e6c9}
       .row .n{width:1.5rem;height:1.5rem;border-radius:50%;display:flex;align-items:center;justify-content:center;font-style:normal;font-size:0.875rem;font-weight:bold;line-height:1;border:1px solid #d3cab5;color:#b5ad9a;background:#fff;opacity:.55;cursor:pointer;transition:transform .1s,opacity .15s}
       .row .n:hover{opacity:1;transform:scale(1.12)}
       .row .n.on{opacity:1;background:#fff}
@@ -1711,15 +1738,113 @@
       .empty{padding:2rem 0.5rem;color:#9a8d73;text-align:center;line-height:1.8;font-size:1rem}
     `;
 
-    function computePopoutRows(boss, now) {
+    /* ==========================================
+       組隊分配：每個頻道最多 2 人（資料存在 rooms/<小隊>/<bossId>/assign/ch<N>/{s1,s2}）
+       - 圓章內容為暱稱首字，顏色由 uid 固定決定；公會成員是圓形、盟友是圓角方形；自己的有金色外框。
+       - 用資料庫交易寫入，兩個人同時認領同一頻道也不會互相覆蓋或超過 2 人。
+       - 擊殺／重置單一頻道不會清掉分配；按「重置全頻道」會一起清除（整隻王的資料被移除）；
+         超過 24 小時沒更新的分配由公會端網頁自動清除。
+    ========================================== */
+    const ASSIGN_MAX = 2;
+    const ASSIGN_STALE_MS = 24 * 60 * 60 * 1000;
+    let popMineOnly = false;
+
+    function popEsc(v) {
+      return String(v).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    }
+    function chipColor(uid) {
+      let h = 0;
+      String(uid).split('').forEach(c => { h = (h * 31 + c.charCodeAt(0)) >>> 0; });
+      return `hsl(${h % 360}, 55%, 40%)`;
+    }
+    function nameChars(name, n) {
+      return Array.from(String(name || '?')).slice(0, n).join('');
+    }
+    function getAssignList(bossId, ch) {
+      const b = timerCache[bossId];
+      const a = b && b.assign && b.assign['ch' + ch];
+      if (!a || typeof a !== 'object') return [];
+      return ['s1', 's2'].map(k => a[k]).filter(v => v && typeof v === 'object' && v.uid)
+        .map(v => ({ uid: String(v.uid), name: String(v.name || '').slice(0, 12) || '?', ts: v.ts || 0, ally: !!v.ally }));
+    }
+    function meEntry() {
+      return { uid: myUid, name: myNick || presenceName(myUid), ts: Date.now(), ally: ALLY_MODE ? 1 : 0 };
+    }
+    // op(list) 回傳新名單（可為空陣列＝清空）；回傳 null 代表不需要變更
+    function assignUpdate(boss, ch, op) {
+      if (!isVersionValid) { alert("版本不符合，無法操作！"); return; }
+      if (!myUid) { alert("尚未取得登入身分，請稍後再試。"); return; }
+      db.ref(`rooms/${roomId}/${boss.id}/assign/ch${ch}`).transaction(cur => {
+        const list = [];
+        if (cur && typeof cur === 'object') ['s1', 's2'].forEach(k => { if (cur[k] && cur[k].uid) list.push(cur[k]); });
+        const next = op(list);
+        if (!next) return undefined;
+        if (!next.length) return null;
+        const out = {};
+        next.slice(0, ASSIGN_MAX).forEach((e, i) => { out['s' + (i + 1)] = e; });
+        return out;
+      }).catch(writeFailed);
+    }
+    function assignAddMe(boss, ch) {
+      assignUpdate(boss, ch, list => (list.some(e => e.uid === myUid) || list.length >= ASSIGN_MAX) ? null : list.concat([meEntry()]));
+    }
+    function assignAddUser(boss, ch, u) {
+      assignUpdate(boss, ch, list => (list.some(e => e.uid === u.uid) || list.length >= ASSIGN_MAX) ? null
+        : list.concat([{ uid: u.uid, name: String(u.name).slice(0, 12), ts: Date.now(), ally: u.ally ? 1 : 0 }]));
+    }
+    function assignRemove(boss, ch, uid) {
+      assignUpdate(boss, ch, list => { const n = list.filter(e => e.uid !== uid); return n.length === list.length ? null : n; });
+    }
+    function assignClear(boss, ch) {
+      assignUpdate(boss, ch, list => list.length ? [] : null);
+    }
+    // 超過 24 小時沒更新的分配自動清除（只有公會版會執行）
+    function autoClearAssign(now) {
+      let budget = 20;
+      bosses.forEach(boss => {
+        const a = timerCache[boss.id] && timerCache[boss.id].assign;
+        if (!a || typeof a !== 'object') return;
+        Object.keys(a).forEach(chKey => {
+          if (budget <= 0 || !/^ch\d+$/.test(chKey) || !a[chKey]) return;
+          const list = ['s1', 's2'].map(k => a[chKey][k]).filter(Boolean);
+          if (!list.some(e => now - (e.ts || 0) > ASSIGN_STALE_MS)) return;
+          budget--;
+          db.ref(`rooms/${roomId}/${boss.id}/assign/${chKey}`).transaction(cur => {
+            if (!cur || typeof cur !== 'object') return undefined;
+            const t = Date.now();
+            const keep = ['s1', 's2'].map(k => cur[k]).filter(e => e && e.uid && t - (e.ts || 0) <= ASSIGN_STALE_MS);
+            const before = ['s1', 's2'].filter(k => cur[k]).length;
+            if (keep.length === before) return undefined;
+            if (!keep.length) return null;
+            const out = {}; keep.forEach((e, i) => { out['s' + (i + 1)] = e; });
+            return out;
+          }).catch(() => {});
+        });
+      });
+    }
+
+    // 依重生時間排序；尚未計時（remainMs = Infinity）的頻道排在最後
+    function popTimeCompare(a, b) {
+      const x = a.remainMs, y = b.remainMs;
+      return (x === y ? 0 : (x < y ? -1 : 1)) || a.ch - b.ch;
+    }
+
+    function computePopoutRows(boss, now, nameMap) {
       const cdSec = getBossCdSec(boss.id);
       const minMs = boss.minMin * 60 * 1000;
       const maxMs = boss.maxMin * 60 * 1000;
       const rows = [];
       for (let ch = 1; ch <= 60; ch++) {
         const info = getChannelData(boss.id, ch);
-        if (!info.killTime) continue;
+        const asg = getAssignList(boss.id, ch).map(e => ({ ...e, name: (nameMap && nameMap[e.uid]) || e.name }));
+        if (!info.killTime && !asg.length) continue;
         const mode = getBossCycleMode(boss, ch);
+        if (!info.killTime) {
+          // 還沒計時、但已經有人認領的頻道：先列出來，等擊殺後開始倒數
+          rows.push({ ch: ch, mode: mode, remainMs: Infinity, idle: true, time: '--:--', time2: '', text: '未計時', cls: 'idle',
+            solo: info.isSolo, steal: info.isSteal, unsure: info.isUnsure, asg: asg });
+          continue;
+        }
         const st = resolveChannelState(info, boss, cdSec, now, mode, getBossManualSince(boss, ch));
         const remainMs = st.kill + minMs - now;
 
@@ -1742,12 +1867,70 @@
           time: formatTime(new Date(st.kill + minMs)),
           time2: boss.minMin !== boss.maxMin ? formatTime(new Date(st.kill + maxMs)) : '',
           solo: info.isSolo, steal: info.isSteal, unsure: info.isUnsure,
-          text: text,
+          text: text, asg: asg,
           cls: st.cdStart ? 'cd' : (remainMs / 1000 <= SOON_SEC ? 'soon' : '')
         });
       }
-      rows.sort((a, b) => a.remainMs - b.remainMs || a.ch - b.ch);
+      rows.sort(popTimeCompare);
       return rows;
+    }
+
+    // 單行裡的人員圓章：固定兩個位置（寬度不變）。沒人 → 第一格「＋」；一人 → 第二格淡淡的「＋」
+    function assignChipsHtml(r) {
+      const dup = r.asg.length === 2 && nameChars(r.asg[0].name, 1) === nameChars(r.asg[1].name, 1); // 首字相同改顯示前兩字
+      let html = '';
+      for (let i = 0; i < ASSIGN_MAX; i++) {
+        const e = r.asg[i];
+        if (e) {
+          const label = nameChars(e.name, dup ? 2 : 1);
+          html += `<i class="chip${dup ? ' two' : ''}${e.uid === myUid ? ' me' : ''}${e.ally ? ' ally' : ''}" style="background:${chipColor(e.uid)}" data-act="asg-chip" data-ch="${r.ch}" data-uid="${popEsc(e.uid)}" title="${popEsc(e.name)}${e.ally ? '（聯盟）' : ''}${e.uid === myUid ? '：點一下取消認領' : '：點一下改派'}">${popEsc(label)}</i>`;
+        } else if (i === r.asg.length) {
+          html += `<i class="chip empty${i === 1 ? ' second' : ''}" data-act="asg-add" data-ch="${r.ch}" title="點一下認領這個頻道">＋</i>`;
+        } else {
+          html += `<i class="chip ghost"></i>`;
+        }
+      }
+      return `<span class="asg">${html}</span>`;
+    }
+
+    // 點別人的圓章：小選單，可勾選線上的人加入／移除，或清除這個頻道的人員
+    function closeAssignMenu() {
+      if (!popWin) return;
+      const m = popWin.document.getElementById('amenu');
+      if (m) m.remove();
+    }
+    function openAssignMenu(ch, anchor) {
+      closeAssignMenu();
+      const doc = popWin.document;
+      const cur = getAssignList(popBoss.id, ch);
+      const people = {};
+      getOnlineUsers().forEach(u => { people[u.uid] = { uid: u.uid, name: u.name, ally: !!u.ally }; });
+      cur.forEach(e => { if (!people[e.uid]) people[e.uid] = { uid: e.uid, name: e.name, ally: e.ally }; });
+      const menu = doc.createElement('div');
+      menu.id = 'amenu'; menu.className = 'amenu';
+      menu.innerHTML = `<div class="ah">${popEsc(popBoss.name)} ${ch} 頻　人員（最多 ${ASSIGN_MAX} 人）</div><div class="al" id="al"></div><div class="ahint" id="ahint"></div><button type="button" class="aclr" id="aclr">清除這個頻道的人員</button>`;
+      const al = menu.querySelector('#al');
+      const hint = menu.querySelector('#ahint');
+      Object.keys(people).forEach(uid => {
+        const u = people[uid];
+        const on = cur.some(e => e.uid === uid);
+        const item = doc.createElement('div');
+        item.className = 'ai' + (!on && cur.length >= ASSIGN_MAX ? ' dis' : '');
+        item.innerHTML = `<i class="chip${u.ally ? ' ally' : ''}" style="background:${chipColor(uid)}">${popEsc(nameChars(u.name, 1))}</i><span class="nm">${popEsc(u.name)}${u.ally ? '（聯盟）' : ''}${uid === myUid ? '（我）' : ''}</span><span class="ck">${on ? '✓' : ''}</span>`;
+        item.addEventListener('click', () => {
+          if (on) { assignRemove(popBoss, ch, uid); closeAssignMenu(); }
+          else if (cur.length >= ASSIGN_MAX) { hint.textContent = `這個頻道已有 ${ASSIGN_MAX} 人，請先移除一位。`; }
+          else { assignAddUser(popBoss, ch, u); closeAssignMenu(); }
+        });
+        al.appendChild(item);
+      });
+      menu.querySelector('#aclr').addEventListener('click', () => { assignClear(popBoss, ch); closeAssignMenu(); });
+      doc.body.appendChild(menu);
+      const r = anchor.getBoundingClientRect();
+      const w = popWin.innerWidth || 400, h = popWin.innerHeight || 330;
+      const mw = menu.offsetWidth, mh = menu.offsetHeight;
+      menu.style.left = Math.max(4, Math.min(r.left, w - mw - 4)) + 'px';
+      menu.style.top = Math.max(4, Math.min(r.bottom + 4, h - mh - 4)) + 'px';
     }
 
     // 標題列的「全自動／全手動」按鈕狀態（60 個頻道全部相同才會亮起）
@@ -1772,9 +1955,13 @@
       const list = popWin.document.getElementById('pl');
       if (!list) return;
       const locked = popBoss.minMin !== popBoss.maxMin;
-      const rows = computePopoutRows(popBoss, Date.now());
+      // 線上的人用最新暱稱顯示；不在線上的用分配當時存的暱稱
+      const nameMap = {};
+      getOnlineUsers().forEach(u => { nameMap[u.uid] = u.name; });
+      let rows = computePopoutRows(popBoss, Date.now(), nameMap);
+      if (popMineOnly) rows = rows.filter(r => r.asg.some(e => e.uid === myUid));
       if (!popSortByTime) rows.sort((a, b) => a.ch - b.ch); // computePopoutRows 預設已依重生時間排序
-      const sig = rows.map(r => `${r.ch}|${r.time}|${r.time2}|${r.cls}|${r.mode}|${r.solo ? 1 : 0}${r.steal ? 1 : 0}${r.unsure ? 1 : 0}`).join(',');
+      const sig = rows.map(r => `${r.ch}|${r.time}|${r.time2}|${r.cls}|${r.mode}|${r.solo ? 1 : 0}${r.steal ? 1 : 0}${r.unsure ? 1 : 0}|${r.asg.map(e => e.uid + ':' + e.name + ':' + (e.ally ? 1 : 0)).join('+')}`).join(',') + `|${popMineOnly ? 'M' : ''}|${myUid}`;
       if (sig !== popSig) {
         popSig = sig;
         list.innerHTML = rows.length
@@ -1785,6 +1972,7 @@
               return `<div class="row ${r.cls}${popFlash === r.ch ? ' flash' : ''}">`
                 + `<span class="mode ${isAuto ? 'auto' : 'manual'}${locked ? ' locked' : ''}" data-act="cycle" data-ch="${r.ch}" title="${tip}">${isAuto ? '自' : '手'}</span>`
                 + `<span class="c">${r.ch} 頻</span>`
+                + assignChipsHtml(r)
                 + `<span class="t"${r.time2 ? ' title="重生時間區間"' : ''}>${timeText}</span>`
                 + `<span class="nt">`
                 + `<i class="n solo${r.solo ? ' on' : ''}" data-act="note" data-type="solo" data-ch="${r.ch}" title="獨家發現（點擊切換）">獨</i>`
@@ -1794,7 +1982,9 @@
                 + `<button type="button" class="kill" data-act="kill" data-ch="${r.ch}">擊殺</button>`
                 + `<button type="button" class="rs" data-act="reset" data-ch="${r.ch}">重置</button></div>`;
             }).join('')
-          : '<div class="empty">目前沒有計時中的頻道<br>在上方輸入頻道號碼，按「擊殺」開始計時</div>';
+          : (popMineOnly
+              ? '<div class="empty">目前沒有分配給你的頻道<br>在頻道旁點「＋」就能認領</div>'
+              : '<div class="empty">目前沒有計時中的頻道<br>在上方輸入頻道號碼，按「擊殺」開始計時</div>');
         popFlash = null;
         popCdEls = {};
         list.querySelectorAll('.cd[data-ch]').forEach(el => { popCdEls[el.dataset.ch] = el; });
@@ -1872,6 +2062,7 @@
       doc.head.appendChild(style);
       doc.body.innerHTML = `
         <div class="hd"><span class="nm" id="ph"></span>
+          <button type="button" id="pmine" class="hsort" title="只顯示分配給我的頻道">只看我的</button>
           <button type="button" id="ps" class="hsort" title="切換排序方式：依重生時間／依頻道順序">排序：時間</button>
           <div class="seg"><button type="button" id="pa">全自動</button><button type="button" id="pm">全手動</button></div>
         </div>
@@ -1892,6 +2083,16 @@
         input.focus();
       };
       doc.getElementById('pk').addEventListener('click', addKill);
+
+      // 只看我的：預設關閉
+      popMineOnly = false;
+      const pmine = doc.getElementById('pmine');
+      pmine.addEventListener('click', () => {
+        popMineOnly = !popMineOnly;
+        pmine.classList.toggle('on', popMineOnly);
+        popSig = null;
+        updatePopout();
+      });
 
       // 排序切換：預設每次開啟都是「依重生時間」
       popSortByTime = true;
@@ -1920,9 +2121,17 @@
         if (el.dataset.act === 'kill') popKill(ch);
         else if (el.dataset.act === 'cycle') popCycle(ch);
         else if (el.dataset.act === 'note') toggleNote(ch, el.dataset.type, popBoss);
+        else if (el.dataset.act === 'asg-add') assignAddMe(popBoss, ch);
+        else if (el.dataset.act === 'asg-chip') {
+          if (el.dataset.uid === myUid) assignRemove(popBoss, ch, myUid);
+          else openAssignMenu(ch, el);
+        }
         else if (el.dataset.act === 'reset') armClick(w, el, '重置', () => popReset(ch));
       });
 
+      // 點選單以外的地方、或按 Esc，就關閉人員選單
+      doc.addEventListener('mousedown', e => { if (!e.target.closest('#amenu') && !e.target.closest('[data-act="asg-chip"]')) closeAssignMenu(); });
+      doc.addEventListener('keydown', e => { if (e.key === 'Escape') closeAssignMenu(); });
       w.addEventListener('pagehide', cleanupPopout);
       popWin = w;
       popSig = null;
@@ -1954,11 +2163,11 @@
       let w = null;
       if (window.documentPictureInPicture) {
         try {
-          w = await window.documentPictureInPicture.requestWindow({ width: 420, height: 340 });
+          w = await window.documentPictureInPicture.requestWindow({ width: 400, height: 330 });
         } catch (e) { w = null; }
       }
       if (!w) {
-        w = window.open('', 'boss-popout', 'popup=yes,width=420,height=340,resizable=yes');
+        w = window.open('', 'boss-popout', 'popup=yes,width=400,height=330,resizable=yes');
         if (!w) { alert("瀏覽器擋住了小視窗，請允許此網站的彈出視窗後再試一次。"); popBoss = null; return; }
         w.document.open();
         w.document.write('<!doctype html><html><head><meta charset="utf-8"></head><body></body></html>');
@@ -2192,9 +2401,9 @@
         .concat(Object.keys(allies).map(k => allies[k]).sort(sortFn));
     }
 
-    // 對方陣營的標籤：公會版看到盟友標「聯盟」，盟友版看到公會成員標「啾察隊」
+    // 對方陣營的標籤：公會版看到盟友標「聯盟」，盟友版看到公會成員標「公會」
     function crossTag(u) {
-      if (ALLY_MODE) return u.ally ? null : '啾察隊';
+      if (ALLY_MODE) return u.ally ? null : '公會';
       return u.ally ? '聯盟' : null;
     }
 
@@ -2203,7 +2412,7 @@
       document.getElementById('onlineCount').textContent = users.length;
       const crossN = users.filter(u => crossTag(u)).length;
       const crossEl = document.getElementById('onlineAllyCount');
-      if (crossEl) crossEl.textContent = crossN ? `（含${ALLY_MODE ? '啾察隊' : '聯盟'} ${crossN} 人）` : '';
+      if (crossEl) crossEl.textContent = crossN ? `（含${ALLY_MODE ? '公會' : '聯盟'} ${crossN} 人）` : '';
       list.innerHTML = '';
       if (!users.length) {
         const empty = document.createElement('div');
@@ -2236,7 +2445,7 @@
       const btn = document.getElementById('online-btn');
       if (btn) {
         const crossN = users.filter(u => crossTag(u)).length;
-        btn.textContent = `線上 ${users.length} 人` + (crossN ? `（${ALLY_MODE ? '啾察隊' : '聯盟'} ${crossN}）` : '');
+        btn.textContent = `線上 ${users.length} 人` + (crossN ? `（${ALLY_MODE ? '公會' : '聯盟'} ${crossN}）` : '');
       }
       const modal = document.getElementById('onlineModal');
       if (modal && modal.style.display === 'flex') fillOnlineList(users);
@@ -2305,10 +2514,10 @@
 
     let copyBtnTimer = null;
     async function copyBossRecords() {
-      const rows = computePopoutRows(currentBoss, Date.now());
+      const rows = computePopoutRows(currentBoss, Date.now()).filter(r => !r.idle);
       if (!rows.length) { alert(`【${currentBoss.name}】目前沒有任何頻道記錄！`); return; }
       // 一律依重生時間由早到晚排列（同時間再依頻道號碼），與主畫面的排序設定無關
-      rows.sort((a, b) => a.remainMs - b.remainMs || a.ch - b.ch);
+      rows.sort(popTimeCompare);
       const text = rows.map(r => `${r.ch}頻 ${r.time2 ? `${r.time}~${r.time2}` : r.time}`).join('\n');
 
       const btn = document.getElementById('copy-btn');
