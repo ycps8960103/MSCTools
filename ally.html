@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>楓之谷 Boss 計時器 (啾察隊專用版 ver.20261024.01)</title>
+  <title>楓之谷 Boss 計時器 (啾察隊專用版 ver.20261102.01)</title>
   
   <!-- 引入 Firebase SDK (版本 9.x 兼容模式) -->
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
@@ -114,6 +114,7 @@
     .btn-tool:hover { filter: brightness(1.1); }
     .btn-fix { background: linear-gradient(#f0933f, #d9731a); }
     .btn-admin { background: linear-gradient(#a45bc2, #823a9f); }
+    .btn-hub { background: linear-gradient(#a45bc2, #823a9f); }
     .btn-cd { background: linear-gradient(#3dc176, #22a05a); }
     .btn-logout { background: linear-gradient(#d9594a, #b8372a); }
     .btn-tool.off { background: linear-gradient(#9aa5a8, #7f8c8d); }
@@ -300,13 +301,67 @@
     .ally-empty .ally-empty-msg { display: flex; }
     .ally-empty #channel-grid, .ally-empty .header-btns, .ally-empty #cycle-switch { display: none !important; }
     /* 盟友版：隱藏所有管理功能 */
-    .ally-mode .btn-cd, .ally-mode .btn-admin, .ally-mode .btn-share, .ally-mode .btn-discord-set,
+    .ally-mode .btn-cd, .ally-mode .btn-admin, .ally-mode .btn-share, .ally-mode .btn-hub, .ally-mode .btn-discord-set,
     .ally-mode #discord-toggle-btn, .ally-mode #cycle-switch,
     .ally-mode .cycle-badge,
     .ally-mode .header-btns .btn-ch.reset { display: none !important; }
     .range-row { display: flex; align-items: center; gap: 0.5rem; }
     .range-row input { flex: 1; min-width: 0; }
     .range-hint { margin-top: 0.3125rem; font-size: 0.75rem; color: #8a7d66; line-height: 1.5; }
+    .lv-badge { font-size: 0.75rem; font-weight: bold; color: #4a3519; background: var(--gold); border-radius: 0.5rem; padding: 0.0625rem 0.4375rem; vertical-align: middle; }
+    .boss-item .lv { font-style: normal; font-size: 0.625rem; font-weight: bold; color: #fff; background: #8a7d66; border-radius: 0.5rem; padding: 0.0625rem 0.3125rem; margin-right: 0.3125rem; vertical-align: middle; }
+    .boss-item.active .lv { background: rgba(255, 255, 255, 0.28); }
+    .hub-hint { font-size: 0.8125rem; color: #8a7d66; margin-bottom: 0.625rem; }
+    .hub-list { display: flex; flex-direction: column; gap: 0.5rem; }
+    .hub-list button { text-align: left; background: #fff; border: 1px solid var(--line); border-radius: 0.625rem; padding: 0.625rem 0.875rem; cursor: pointer; display: flex; flex-direction: column; gap: 0.125rem; font-size: 0.9375rem; color: var(--ink); }
+    .hub-list button span { font-size: 0.75rem; color: #8a7d66; }
+    .hub-list button:hover { background: #f6ecd7; border-color: #c9ad7d; }
+    .bm-content { width: 36rem; }
+    .bm-head, .bm-row { display: grid; grid-template-columns: 1fr 4rem 4.5rem 4.5rem 2.25rem; gap: 0.375rem; align-items: center; }
+    .bm-head { font-size: 0.75rem; color: #8a7d66; padding: 0 0.125rem; margin-bottom: 0.25rem; }
+    .bm-rows { max-height: 18rem; overflow-y: auto; margin-bottom: 0.5rem; padding-right: 0.125rem; }
+    .bm-row { margin-bottom: 0.3125rem; }
+    .bm-row input { width: 100%; padding: 0.375rem 0.4375rem; border: 1px solid #cdbf9f; border-radius: 0.5rem; font-size: 0.875rem; background: #fff; outline: none; min-width: 0; }
+    .bm-row input:focus { border-color: #b8986c; box-shadow: 0 0 0 3px rgba(184, 152, 108, 0.28); }
+    .bm-row.del input { opacity: 0.4; text-decoration: line-through; pointer-events: none; }
+    .bm-row .bm-del { border: 0; border-radius: 0.5rem; background: #ece6d6; color: #8a3b2a; height: 2rem; cursor: pointer; font-size: 0.9375rem; }
+    .bm-row.del .bm-del { background: #e02424; color: #fff; }
+    .bm-add { margin-top: 0.125rem; padding: 0.4375rem; font-size: 0.875rem; }
+    /* ===== 簡化版頻道卡片（四行：頻道＋狀態／巡迴＋時間／人員＋註記／按鈕） ===== */
+    .channel-card { padding: 0.3125rem 0.4375rem; gap: 0.1875rem; text-align: left; }
+    .cc-top { display: flex; align-items: baseline; justify-content: space-between; gap: 0.25rem; }
+    .cc-top .ch-title { padding: 0; font-size: 0.9375rem; text-align: left; white-space: nowrap; }
+    .cc-top .ch-status { margin: 0; font-size: 1rem; }
+    .cc-top .ch-status.long { font-size: 0.8125rem; }
+    .cc-mid { display: flex; align-items: center; gap: 0.25rem; min-height: 1.0625rem; }
+    .cc-mid .cycle-badge { position: static; flex: 0 0 auto; width: 1.0625rem; height: 1.0625rem; }
+    .cc-mid .ch-estimated-time { margin: 0; flex: 1; min-width: 0; text-align: left; font-size: 0.6875rem; }
+    .cc-asg { display: flex; align-items: center; justify-content: space-between; gap: 0.25rem; }
+    .cc-asg .note-badges-container { position: static; }
+    .cc-asg .note-badge { width: 1rem; height: 1rem; font-size: 0.625rem; }
+    .channel-card .asg { display: flex; gap: 0.125rem; }
+
+    /* 人員圓章與選單（網頁版） */
+    .chip { width: 1.3125rem; height: 1.3125rem; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; color: #fff; font-style: normal; font-size: 0.6875rem; font-weight: bold; line-height: 1; cursor: pointer; border: 2px solid transparent; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3); box-sizing: border-box; flex: 0 0 auto; transition: transform 0.1s; }
+    .chip.two { font-size: 0.5rem; letter-spacing: -0.03em; }
+    .chip.ally { border-radius: 0.3rem; }
+    .chip.me { border-color: var(--gold); box-shadow: 0 0 0 1px #fff, 0 0 5px rgba(243, 201, 105, 0.95); }
+    .chip:hover { transform: scale(1.12); }
+    .chip.empty { background: transparent; border: 1px dashed #b8986c; color: #b8986c; box-shadow: none; font-weight: normal; }
+    .chip.empty.second { opacity: 0.5; }
+    .chip.ghost { visibility: hidden; pointer-events: none; }
+    .amenu { position: fixed; z-index: 1200; width: 17rem; max-width: 94vw; background: #fff; border: 1px solid #d8cdb2; border-radius: 0.75rem; box-shadow: 0 8px 24px rgba(60, 40, 10, 0.35); overflow: hidden; }
+    .amenu .ah { background: linear-gradient(135deg, var(--brown-1), var(--brown-2)); color: #fff; font-size: 0.875rem; padding: 0.5rem 0.75rem; }
+    .amenu .al { max-height: 13rem; overflow-y: auto; }
+    .amenu .ai { display: flex; align-items: center; gap: 0.5rem; padding: 0.4375rem 0.75rem; cursor: pointer; font-size: 0.9375rem; }
+    .amenu .ai:hover { background: #f6ecd7; }
+    .amenu .ai .chip { width: 1.5rem; height: 1.5rem; font-size: 0.8125rem; cursor: inherit; }
+    .amenu .ai .nm { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .amenu .ai .ck { color: var(--green); font-weight: bold; }
+    .amenu .ai.dis { opacity: 0.45; cursor: not-allowed; }
+    .amenu .ahint { padding: 0.3125rem 0.75rem; font-size: 0.8125rem; color: #c0392b; min-height: 1.3rem; }
+    .amenu .aclr { display: block; width: 100%; border: 0; border-top: 1px solid #eee4cf; background: #faf6ea; color: #8a3b2a; font-size: 0.875rem; padding: 0.5rem; cursor: pointer; }
+    .amenu .aclr:hover { background: #f3e6c9; }
     .nick-hint { display: none; font-size: 0.8125rem; color: #c0392b; margin-bottom: 0.5rem; }
   
   </style>
@@ -332,11 +387,9 @@
     <!-- 固定在左下角的工具區 -->
     <div class="tools-area">
       <button type="button" class="btn-tool btn-fix" onclick="openFixTimeModal()">⏱️ 修正時間</button>
-      <button type="button" class="btn-tool btn-cd" onclick="openBossCdModal()">⚙️ 冷卻設定</button>
-      <button type="button" class="btn-tool btn-discord-set" onclick="openDiscordModal()">Discord 設定</button>
       <button type="button" id="discord-toggle-btn" class="btn-tool" onclick="toggleDiscordEnabled()">🔔 通知：開</button>
-      <button type="button" class="btn-tool btn-share" onclick="openShareModal()">🤝 聯盟共享</button>
-      <button type="button" class="btn-tool btn-admin" onclick="openPasswordModal()">變更密碼</button>
+      <button type="button" class="btn-tool btn-discord-set" onclick="openDiscordModal()">Discord 設定</button>
+      <button type="button" class="btn-tool btn-hub" onclick="openAdminHub()">🛠️ 管理設定</button>
       <button type="button" class="btn-tool btn-logout" style="grid-column: span 2;" onclick="logout()">🔒 鎖定</button>
     </div>
   </div>
@@ -408,6 +461,37 @@
     </div>
   </div>
 
+  <!-- 管理設定（需要管理員金鑰的功能集中在這裡） -->
+  <div id="adminHubModal" class="modal">
+    <div class="modal-content">
+      <h3>🛠️ 管理設定</h3>
+      <div class="hub-hint">下列功能需要輸入管理員金鑰才能儲存。</div>
+      <div class="hub-list">
+        <button type="button" onclick="hubGo('openBossMgr')"><b>📋 野王管理</b><span>新增／刪除野王、修改重生時間與等級</span></button>
+        <button type="button" onclick="hubGo('openBossCdModal')"><b>⚙️ 玩家冷卻時間</b><span>每隻野王各自設定冷卻秒數</span></button>
+        <button type="button" onclick="hubGo('openShareModal')"><b>🤝 聯盟共享</b><span>選擇要分享給聯盟的野王、聯盟密碼</span></button>
+        <button type="button" onclick="hubGo('openPasswordModal')"><b>🔑 變更密碼</b><span>變更小隊或聯盟的查看密碼</span></button>
+      </div>
+      <div class="modal-btns"><button type="button" class="btn-close" onclick="closeAdminHub()">關閉</button></div>
+    </div>
+  </div>
+
+  <!-- 野王管理 -->
+  <div id="bossMgrModal" class="modal">
+    <div class="modal-content bm-content">
+      <h3>📋 野王管理</h3>
+      <div class="form-group"><label>管理員金鑰</label><input type="password" id="bmAdminKey" placeholder="請輸入管理員金鑰" autocomplete="off"></div>
+      <div class="bm-head"><span>名稱</span><span>等級</span><span>最短(分)</span><span>最長(分)</span><span></span></div>
+      <div id="bmRows" class="bm-rows"></div>
+      <button type="button" class="btn-close bm-add" onclick="bmAddRow()">＋ 新增野王</button>
+      <div class="range-hint">最短 = 最長代表固定重生時間（可使用自動巡迴）；兩者不同則為區間王，只能手動巡迴。左側列表依「等級」由低到高排列。刪除野王會一併清除它所有頻道的記錄與設定。</div>
+      <div class="modal-btns">
+        <button type="button" class="btn-save" onclick="saveBossMgr()">儲存</button>
+        <button type="button" class="btn-close" onclick="closeBossMgr()">取消</button>
+      </div>
+    </div>
+  </div>
+
   <!-- 線上人員彈窗 -->
   <div id="onlineModal" class="modal">
     <div class="modal-content">
@@ -428,7 +512,7 @@
   <!-- 修改各 Boss 玩家設定冷卻時間彈窗 (權限限 Admin) -->
   <div id="bossCdModal" class="modal">
     <div class="modal-content">
-      <h3>⚙️ 設定 Boss 冷卻與重生時間</h3>
+      <h3>⚙️ 設定 Boss 玩家冷卻時間</h3>
       <div class="form-group">
         <label>最大權限者金鑰 (Admin Key)</label>
         <input type="password" id="cdAdminKeyInput" placeholder="請輸入管理員金鑰">
@@ -441,18 +525,8 @@
         <label>冷卻時間 (秒)</label>
         <input type="number" id="cdSecInput" min="0" placeholder="請輸入秒數，例如: 5">
       </div>
-      <div class="form-group">
-        <label>重生時間範圍 (分鐘)</label>
-        <div class="range-row">
-          <input type="number" id="rangeMinInput" min="1" max="1440" placeholder="最短">
-          <span>~</span>
-          <input type="number" id="rangeMaxInput" min="1" max="1440" placeholder="最長">
-        </div>
-        <div class="range-hint">最短 = 最長 代表固定時間（可使用自動巡迴）；兩者不同則為區間王，只能手動巡迴。預設：<b id="rangeDefaultText">--</b></div>
-      </div>
-      <div class="modal-btns">
+            <div class="modal-btns">
         <button type="button" class="btn-save" onclick="saveBossCdSetting()">儲存設定</button>
-        <button type="button" class="btn-clear" onclick="resetBossRange()">還原此王預設重生時間</button>
         <button type="button" class="btn-close" onclick="closeBossCdModal()">取消</button>
       </div>
     </div>
@@ -540,7 +614,18 @@
     // ==========================================
     // 當前程式版本號
     // ==========================================
-    const APP_VERSION = "ver.20261024.01";
+    const APP_VERSION = "ver.20261102.01";
+    // 滑鼠停在版本標籤上時顯示的更新簡要
+    const VERSION_NOTES = [
+      APP_VERSION + ' 更新簡要',
+      '• 野王清單改存資料庫：可在「管理設定 → 野王管理」新增／刪除野王、修改重生時間與等級',
+      '• 左側列表依野王等級排序，並顯示 Lv.',
+      '• 巴洛古重生時間改為 405 ~ 540 分鐘',
+      '• 新增組隊分配：每個頻道最多 2 人；網頁與小視窗都能認領，也能替別人加入',
+      '• 尚未計時的頻道也能先分配人員，並顯示在小視窗',
+      '• 網頁版介面簡化：頻道卡片精簡、管理功能收進「管理設定」',
+      '• 小視窗列高維持精簡'
+    ].join('\n');
 
     // 聯盟版旗標：index.html（公會版）為 false；ally.html（盟友版）由同一份程式產生，此值為 true。
     // 盟友版只能看到「已分享」的野王，且拿不到 Webhook、不能改任何管理設定。
@@ -595,21 +680,63 @@
     /* ==========================================
        Boss 清單
     ========================================== */
-    const bosses = [
-      { id: 'ruby', name: '紅寶王', minMin: 45, maxMin: 45, playerCdSec: 0 },
-      { id: 'stump', name: '樹妖王', minMin: 45, maxMin: 45, playerCdSec: 0 },
-      { id: 'monkey', name: '殭屍猴王', minMin: 45, maxMin: 45, playerCdSec: 0 },
-      { id: 'clam', name: '巨居蟹', minMin: 45, maxMin: 45, playerCdSec: 0 },
-      { id: 'swamp-croc', name: '沼澤巨鱷', minMin: 45, maxMin: 45, playerCdSec: 0 },
-      { id: 'shade', name: '冥界幽靈', minMin: 60, maxMin: 60, playerCdSec: 0 },
-      { id: 'mushroom', name: '蘑菇王', minMin: 40, maxMin: 60, playerCdSec: 0 },
-      { id: 'z_mushroom', name: '殭屍蘑菇王', minMin: 40, maxMin: 60, playerCdSec: 0 },
-      { id: 'balrog', name: '巴洛古', minMin: 405, maxMin: 540, playerCdSec: 0 },
-      { id: 'snow_witch', name: '雪山魔女', minMin: 158, maxMin: 180, playerCdSec: 0 },
-      { id: 'yeti_boss', name: '雪毛怪人', minMin: 58, maxMin: 90, playerCdSec: 0 },
-      { id: 'jr_balrog', name: '厄運死神', minMin: 45, maxMin: 105, playerCdSec: 0 },
-      { id: 'eliza', name: '艾利傑', minMin: 45, maxMin: 45, playerCdSec: 0 }
+    // 野王清單的「初始範本」：只在資料庫還沒有野王清單時使用（第一次在「管理設定 → 野王管理」按儲存，
+    // 就會把清單寫進資料庫，之後新增／刪除／修改重生時間與等級，都在網頁介面裡操作，不需要再改程式碼）。
+    const BOSS_TEMPLATE = [
+      { id: 'ruby', name: '紅寶王', level: 20, minMin: 45, maxMin: 45 },
+      { id: 'stump', name: '樹妖王', level: 35, minMin: 45, maxMin: 45 },
+      { id: 'monkey', name: '殭屍猴王', level: 50, minMin: 45, maxMin: 45 },
+      { id: 'clam', name: '巨居蟹', level: 55, minMin: 45, maxMin: 45 },
+      { id: 'shade', name: '冥界幽靈', level: 56, minMin: 60, maxMin: 60 },
+      { id: 'mushroom', name: '蘑菇王', level: 60, minMin: 40, maxMin: 60 },
+      { id: 'snow_witch', name: '雪山魔女', level: 64, minMin: 158, maxMin: 180 },
+      { id: 'z_mushroom', name: '殭屍蘑菇王', level: 65, minMin: 40, maxMin: 60 },
+      { id: 'swamp-croc', name: '沼澤巨鱷', level: 65, minMin: 45, maxMin: 45 },
+      { id: 'jr_balrog', name: '厄運死神', level: 65, minMin: 45, maxMin: 105 },
+      { id: 'balrog', name: '巴洛古', level: 80, minMin: 405, maxMin: 540 },
+      { id: 'eliza', name: '艾利傑', level: 83, minMin: 45, maxMin: 45 },
+      { id: 'yeti_boss', name: '雪毛怪人', level: 90, minMin: 58, maxMin: 90 }
     ];
+
+    // 野王排序：等級由低到高；等級相同再依最短重生時間、名稱
+    function bossCompare(a, b) {
+      return (a.level - b.level) || (a.minMin - b.minMin) || String(a.name).localeCompare(String(b.name), 'zh-Hant');
+    }
+
+    // 目前使用中的野王清單（陣列物件會就地更新，其他程式拿到的參照不會失效）
+    const bosses = BOSS_TEMPLATE.map(t => ({ ...t, playerCdSec: 0 })).sort(bossCompare);
+    let bossDefsCache = {}; // 資料庫裡的野王清單 { <bossId>: { name, level, minMin, maxMin } }
+
+    // 依資料庫的野王清單（沒有就用範本）更新 bosses：新增、刪除、修改，並依等級排序。
+    // 盟友版只會有「被分享」的那幾隻。回傳是否有任何變動。
+    function rebuildBossList() {
+      const norm = (id, d) => {
+        const mn = parseInt(d.minMin, 10), mx = parseInt(d.maxMin, 10), lv = parseInt(d.level, 10);
+        if (!id || !d || !(mn >= 1) || !(mx >= mn)) return null;
+        return { id: id, name: String(d.name || id).slice(0, 12), level: lv >= 1 ? lv : 0, minMin: mn, maxMin: mx, playerCdSec: 0 };
+      };
+      const tmpl = {}; BOSS_TEMPLATE.forEach(t => { tmpl[t.id] = t; });
+      let want = [];
+      if (ALLY_MODE) {
+        const shared = (timerCache && timerCache.sharedBosses) || {};
+        Object.keys(shared).filter(id => shared[id]).forEach(id => {
+          const w = norm(id, bossDefsCache[id] || tmpl[id] || {});
+          if (w) want.push(w);
+        });
+      } else if (Object.keys(bossDefsCache).length) {
+        Object.keys(bossDefsCache).forEach(id => { const w = norm(id, bossDefsCache[id] || {}); if (w) want.push(w); });
+      } else {
+        BOSS_TEMPLATE.forEach(t => want.push(norm(t.id, t)));
+      }
+      const before = JSON.stringify(bosses.map(b => [b.id, b.name, b.level, b.minMin, b.maxMin]));
+      const wantIds = {}; want.forEach(w => { wantIds[w.id] = true; });
+      for (let i = bosses.length - 1; i >= 0; i--) { if (!wantIds[bosses[i].id]) bosses.splice(i, 1); }
+      const byId = {}; bosses.forEach(b => { byId[b.id] = b; });
+      want.forEach(w => { if (byId[w.id]) Object.assign(byId[w.id], w); else bosses.push(w); });
+      bosses.sort(bossCompare);
+      if (currentBoss && bosses.indexOf(currentBoss) === -1 && bosses.length) currentBoss = bosses[0];
+      return before !== JSON.stringify(bosses.map(b => [b.id, b.name, b.level, b.minMin, b.maxMin]));
+    }
 
     let currentBoss = bosses[0];
     let timerCache = {}; 
@@ -783,15 +910,123 @@
     /* ==========================================
        Boss 冷卻時間設定彈窗與處理 logic
     ========================================== */
+    function openAdminHub() { document.getElementById('adminHubModal').style.display = 'flex'; }
+    function closeAdminHub() { document.getElementById('adminHubModal').style.display = 'none'; }
+    function hubGo(fnName) { closeAdminHub(); if (typeof window[fnName] === 'function') window[fnName](); }
+
+    /* ==========================================
+       野王管理：新增／刪除野王、修改名稱、等級、重生時間範圍（需要管理員金鑰）
+       野王清單存在資料庫 rooms/<小隊>/bossDefs；資料庫還是空的時候，第一次按「儲存」會把目前清單整份寫進去。
+    ========================================== */
+    let bmRows = [];
+
+    function openBossMgr() {
+      if (ALLY_MODE) return;
+      if (!isVersionValid) { alert("版本不符合，無法操作！"); return; }
+      document.getElementById('bmAdminKey').value = '';
+      bmRows = bosses.map(b => ({ id: b.id, name: b.name, level: b.level, min: b.minMin, max: b.maxMin, del: false }));
+      renderBmRows();
+      document.getElementById('bossMgrModal').style.display = 'flex';
+    }
+    function closeBossMgr() { document.getElementById('bossMgrModal').style.display = 'none'; }
+
+    function renderBmRows() {
+      const box = document.getElementById('bmRows');
+      box.innerHTML = '';
+      bmRows.forEach((r, i) => {
+        const row = document.createElement('div');
+        row.className = 'bm-row' + (r.del ? ' del' : '');
+        const mk = (key, type, ph, extra) => {
+          const inp = document.createElement('input');
+          inp.type = type; inp.placeholder = ph; inp.value = r[key] === undefined ? '' : r[key];
+          if (extra) Object.keys(extra).forEach(k => inp.setAttribute(k, extra[k]));
+          inp.addEventListener('input', () => { r[key] = inp.value; });
+          return inp;
+        };
+        row.appendChild(mk('name', 'text', '野王名稱', { maxlength: 12 }));
+        row.appendChild(mk('level', 'number', 'Lv', { min: 1, max: 300 }));
+        row.appendChild(mk('min', 'number', '最短', { min: 1, max: 1440 }));
+        row.appendChild(mk('max', 'number', '最長', { min: 1, max: 1440 }));
+        const del = document.createElement('button');
+        del.type = 'button'; del.className = 'bm-del'; del.textContent = r.del ? '↺' : '🗑';
+        del.title = r.del ? '取消刪除' : '刪除這隻野王';
+        del.addEventListener('click', () => {
+          if (!r.id) { bmRows.splice(i, 1); } else { r.del = !r.del; }
+          renderBmRows();
+        });
+        row.appendChild(del);
+        box.appendChild(row);
+      });
+    }
+
+    function bmAddRow() {
+      bmRows.push({ id: '', name: '', level: '', min: '', max: '', del: false });
+      renderBmRows();
+      const box = document.getElementById('bmRows');
+      box.scrollTop = box.scrollHeight;
+    }
+
+    function saveBossMgr() {
+      if (!isVersionValid) { alert("版本不符合，無法操作！"); return; }
+      const adminKey = document.getElementById('bmAdminKey').value.trim();
+      if (!adminKey) { alert("請輸入管理員金鑰！"); return; }
+
+      const active = bmRows.filter(r => !r.del);
+      if (!active.length) { alert("至少要保留一隻野王！"); return; }
+      const names = {};
+      for (const r of active) {
+        const name = String(r.name || '').trim();
+        const lv = parseInt(r.level, 10), mn = parseInt(r.min, 10), mx = parseInt(r.max, 10);
+        if (!name || name.length > 12) { alert("野王名稱不可空白，最多 12 個字！"); return; }
+        if (names[name]) { alert(`野王名稱重複：${name}`); return; }
+        names[name] = true;
+        if (!(lv >= 1 && lv <= 300)) { alert(`【${name}】的等級請輸入 1 ~ 300 的整數！`); return; }
+        if (!(mn >= 1 && mn <= 1440) || !(mx >= mn && mx <= 1440)) { alert(`【${name}】的重生時間不正確：請輸入 1 ~ 1440 的整數分鐘，且「最長」不可小於「最短」！`); return; }
+        r._def = { name: name, level: lv, minMin: mn, maxMin: mx };
+      }
+      const removed = bmRows.filter(r => r.del && r.id);
+      if (removed.length && !confirm(`確定要刪除：${removed.map(r => r.name).join('、')}？\n它們所有頻道的計時記錄與設定都會一併清除，無法復原。`)) return;
+
+      const seeding = !Object.keys(bossDefsCache).length; // 資料庫還沒有清單：全部寫入
+      const ids = {}; bosses.forEach(b => { ids[b.id] = true; });
+      const ops = [];
+      let added = 0, changed = 0;
+      active.forEach(r => {
+        let id = r.id;
+        if (!id) {
+          do { id = 'b' + Date.now().toString(36) + Math.floor(Math.random() * 36).toString(36); } while (ids[id]);
+          ids[id] = true; added++;
+        }
+        const cur = bossDefsCache[id];
+        const same = cur && cur.name === r._def.name && parseInt(cur.level, 10) === r._def.level
+          && parseInt(cur.minMin, 10) === r._def.minMin && parseInt(cur.maxMin, 10) === r._def.maxMin;
+        if (seeding || !same) {
+          if (r.id) changed++;
+          ops.push(() => db.ref(`rooms/${roomId}/bossDefs/${id}`).set(r._def));
+        }
+      });
+      removed.forEach(r => {
+        ['bossDefs', 'bossCdSettings', 'bossCycleSettings', 'bossRangeSettings', 'sharedBosses'].forEach(k => {
+          ops.push(() => db.ref(`rooms/${roomId}/${k}/${r.id}`).remove());
+        });
+        ops.push(() => db.ref(`rooms/${roomId}/${r.id}`).remove());
+      });
+      if (!ops.length) { alert("沒有任何變更。"); closeBossMgr(); return; }
+
+      withAdmin(adminKey, () => Promise.all(ops.map(f => f()))).then(() => {
+        alert(seeding
+          ? `已把野王清單（${active.length} 隻）寫入資料庫！之後的新增、刪除、修改都會同步給所有人。`
+          : `已儲存：新增 ${added} 隻、修改 ${changed} 隻、刪除 ${removed.length} 隻。`);
+        closeBossMgr();
+      }).catch(err => {
+        if (err && err.stage === 'key') alert("【權限不足】管理者金鑰錯誤！");
+        else if (isPermissionDenied(err)) alert("寫入被拒絕：資料庫規則可能尚未更新（請管理員重新發布最新的規則）。");
+        else alert("寫入資料庫失敗，請重試！");
+      });
+    }
+
     function fillCdModalFields(bossId) {
-      const boss = bosses.find(b => b.id === bossId);
-      if (!boss) return;
       document.getElementById('cdSecInput').value = getBossCdSec(bossId);
-      document.getElementById('rangeMinInput').value = boss.minMin;
-      document.getElementById('rangeMaxInput').value = boss.maxMin;
-      const dMin = boss.defMin !== undefined ? boss.defMin : boss.minMin;
-      const dMax = boss.defMax !== undefined ? boss.defMax : boss.maxMin;
-      document.getElementById('rangeDefaultText').textContent = dMin === dMax ? `${dMin} 分鐘` : `${dMin} ~ ${dMax} 分鐘`;
     }
 
     function openBossCdModal() {
@@ -825,54 +1060,15 @@
       const boss = bosses.find(b => b.id === bossId);
       const cdSecRaw = document.getElementById('cdSecInput').value.trim();
       const cdSec = parseInt(cdSecRaw, 10);
-      const minRaw = document.getElementById('rangeMinInput').value.trim();
-      const maxRaw = document.getElementById('rangeMaxInput').value.trim();
-      const rMin = parseInt(minRaw, 10);
-      const rMax = parseInt(maxRaw, 10);
-
-      if (!adminKey) {
-        alert("請輸入管理員金鑰！");
-        return;
-      }
-      if (cdSecRaw === '' || isNaN(cdSec) || cdSec < 0) {
-        alert("請輸入有效的冷卻秒數（正整數或0）！");
-        return;
-      }
-      if (minRaw === '' || maxRaw === '' || isNaN(rMin) || isNaN(rMax) || rMin < 1 || rMax < rMin || rMax > 1440) {
-        alert("重生時間範圍不正確：請輸入 1 ~ 1440 的整數分鐘，且「最長」不可小於「最短」！");
-        return;
-      }
-
-      // 與程式內建預設相同就不存，保持資料庫乾淨
-      const isDefault = boss.defMin !== undefined && rMin === boss.defMin && rMax === boss.defMax;
-      withAdmin(adminKey, () => Promise.all([
-        db.ref(`rooms/${roomId}/bossCdSettings/${bossId}`).set(cdSec),
-        isDefault
-          ? db.ref(`rooms/${roomId}/bossRangeSettings/${bossId}`).remove()
-          : db.ref(`rooms/${roomId}/bossRangeSettings/${bossId}`).set({ min: rMin, max: rMax })
-      ])).then(() => {
-        const rangeText = rMin === rMax ? `${rMin} 分鐘` : `${rMin} ~ ${rMax} 分鐘`;
-        alert(`已成功更新【${boss.name}】：冷卻 +${cdSec} 秒、重生時間 ${rangeText}！`);
+      if (!boss) { alert("請選擇野王！"); return; }
+      if (!adminKey) { alert("請輸入管理員金鑰！"); return; }
+      if (cdSecRaw === '' || isNaN(cdSec) || cdSec < 0) { alert("請輸入有效的冷卻秒數（正整數或0）！"); return; }
+      withAdmin(adminKey, () => db.ref(`rooms/${roomId}/bossCdSettings/${bossId}`).set(cdSec)).then(() => {
+        alert(`已成功將【${boss.name}】的玩家冷卻時間設定為 +${cdSec} 秒！`);
         closeBossCdModal();
       }).catch(err => {
         if (err && err.stage === 'key') alert("【權限不足】管理者金鑰錯誤！");
         else alert("寫入資料庫失敗，請重試！");
-      });
-    }
-
-    // 移除自訂重生時間，回到程式內建預設
-    function resetBossRange() {
-      if (!isVersionValid) { alert("版本不符合，無法操作！"); return; }
-      const adminKey = document.getElementById('cdAdminKeyInput').value.trim();
-      const bossId = document.getElementById('cdBossSelect').value;
-      const boss = bosses.find(b => b.id === bossId);
-      if (!adminKey) { alert("請輸入管理員金鑰！"); return; }
-      withAdmin(adminKey, () => db.ref(`rooms/${roomId}/bossRangeSettings/${bossId}`).remove()).then(() => {
-        alert(`已將【${boss.name}】的重生時間還原為預設值！`);
-        closeBossCdModal();
-      }).catch(err => {
-        if (err && err.stage === 'key') alert("【權限不足】管理者金鑰錯誤！");
-        else alert("操作失敗，請重試！");
       });
     }
 
@@ -1114,7 +1310,10 @@
           bossCdCache = val.bossCdSettings || {};
           bossCycleCache = val.bossCycleSettings || {};
           bossRangeCache = val.bossRangeSettings || {};
-          applyBossOverrides();
+          bossDefsCache = val.bossDefs || {};
+          rebuildBossList();
+          applyBossOverrides();   // 只有「資料庫還沒有野王清單」時才會用到舊的重生時間覆蓋
+          renderBossTitle();
           refreshBossHeaderInfo();
           if (val.discordWebhook) DEFAULT_WEBHOOK_URL = val.discordWebhook;
           updateCycleSwitch();
@@ -1139,8 +1338,8 @@
         const cdSec = getBossCdSec(boss.id);
         
         div.innerHTML = `
-          <span class="boss-name">${boss.name}${(!ALLY_MODE && timerCache.sharedBosses && timerCache.sharedBosses[boss.id]) ? '<i class="share-tag" title="已分享給聯盟">聯</i>' : ''}</span>
-          <div class="boss-info-group"><span class="boss-time-tag">${timeText}</span><span class="boss-cd-tag">+${cdSec}s</span></div>
+          <span class="boss-name">${boss.level > 0 ? `<i class="lv" title="等級 ${boss.level}">Lv.${boss.level}</i>` : ''}${popEsc(boss.name)}${(!ALLY_MODE && timerCache.sharedBosses && timerCache.sharedBosses[boss.id]) ? '<i class="share-tag" title="已分享給聯盟">聯</i>' : ''}</span>
+          <div class="boss-info-group"><span class="boss-time-tag">${timeText}</span>${cdSec > 0 ? `<span class="boss-cd-tag">+${cdSec}s</span>` : ''}</div>
           <div class="boss-badges" data-boss-id="${boss.id}">
             <i class="boss-badge red" title="即將重生"></i>
             <i class="boss-badge green" title="計時中"></i>
@@ -1186,6 +1385,7 @@
     // 把資料庫裡的自訂重生時間範圍套用到 Boss 清單（沒有自訂就還原程式內建預設）。
     // 之後所有畫面、通知、小視窗讀到的都是同一份數值。
     function applyBossOverrides() {
+      if (ALLY_MODE || Object.keys(bossDefsCache).length) return; // 野王清單已在資料庫：重生時間以清單為準
       bosses.forEach(boss => {
         if (boss.defMin === undefined) { boss.defMin = boss.minMin; boss.defMax = boss.maxMin; }
         const ov = bossRangeCache ? bossRangeCache[boss.id] : null;
@@ -1196,13 +1396,24 @@
       });
     }
 
+    // 標題列：野王名稱＋等級＋小隊＋版本（滑鼠停在版本上可看更新簡要）
+    function versionBadgeHtml() {
+      return `<span id="version-display" class="version-badge" title="${popEsc(VERSION_NOTES)}">${APP_VERSION}</span>`;
+    }
+    function renderBossTitle() {
+      const el = document.getElementById('current-boss-name');
+      if (!el || !currentBoss) return;
+      const lv = currentBoss.level > 0 ? `<span class="lv-badge">Lv.${currentBoss.level}</span>` : '';
+      el.innerHTML = `
+        ${popEsc(currentBoss.name)} ${lv}
+        <span id="room-display" class="room-badge">${ALLY_MODE ? '聯盟共享' : `小隊: ${roomId}`}</span>
+        ${versionBadgeHtml()}
+      `;
+    }
+
     function selectBoss(boss) {
       currentBoss = boss;
-      document.getElementById('current-boss-name').innerHTML = `
-        ${boss.name} 
-        <span id="room-display" class="room-badge">${ALLY_MODE ? '聯盟共享' : `小隊: ${roomId}`}</span>
-        <span id="version-display" class="version-badge">${APP_VERSION}</span>
-      `;
+      renderBossTitle();
       refreshBossHeaderInfo();
       updateCycleSwitch();
       initSidebar();
@@ -1514,15 +1725,19 @@
         const card = document.createElement('div');
         card.className = 'channel-card';
         card.innerHTML = `
-          <div class="note-badges-container">
-            <div class="note-badge badge-solo" onclick="toggleNote(${ch}, 'solo')" title="獨家發現 (點擊切換)">獨</div>
-            <div class="note-badge badge-steal" onclick="toggleNote(${ch}, 'steal')" title="必須搶奪 (點擊切換)">搶</div>
-            <div class="note-badge badge-unsure" onclick="toggleNote(${ch}, 'unsure')" title="不確定 / 可能遺失 (點擊切換)">?</div>
+          <div class="cc-top"><span class="ch-title">${ch} 頻</span><span class="ch-status"></span></div>
+          <div class="cc-mid">
+            <span class="cycle-badge manual ${locked ? 'locked' : ''}" onclick="toggleChannelCycle(${ch})">手</span>
+            <span class="ch-estimated-time" title="預計重生時間"></span>
           </div>
-          <div class="cycle-badge manual ${locked ? 'locked' : ''}" onclick="toggleChannelCycle(${ch})">手</div>
-          <div class="ch-title">${ch} 頻</div>
-          <div class="ch-status"></div>
-          <div class="ch-estimated-time"></div>
+          <div class="cc-asg">
+            <span class="asg-wrap"></span>
+            <div class="note-badges-container">
+              <div class="note-badge badge-solo" onclick="toggleNote(${ch}, 'solo')" title="獨家發現 (點擊切換)">獨</div>
+              <div class="note-badge badge-steal" onclick="toggleNote(${ch}, 'steal')" title="必須搶奪 (點擊切換)">搶</div>
+              <div class="note-badge badge-unsure" onclick="toggleNote(${ch}, 'unsure')" title="不確定 / 可能遺失 (點擊切換)">?</div>
+            </div>
+          </div>
           <div class="btn-group">
             <button type="button" class="btn-ch" onclick="handleKillClick(${ch})">擊殺</button>
             <button type="button" class="btn-ch reset" onclick="resetChannel(${ch})">重置</button>
@@ -1536,7 +1751,8 @@
           cyc: card.querySelector('.cycle-badge'),
           status: card.querySelector('.ch-status'),
           est: card.querySelector('.ch-estimated-time'),
-          cls: null, statusText: null, estText: null, soloOn: null, stealOn: null, unsureOn: null, cycKey: null
+          asg: card.querySelector('.asg-wrap'),
+          cls: null, statusText: null, estText: null, soloOn: null, stealOn: null, unsureOn: null, cycKey: null, asgSig: null
         };
         frag.appendChild(card);
       }
@@ -1555,12 +1771,15 @@
       const minMinSec = minMin * 60;
       const maxMinSec = maxMin * 60;
 
+      const nameMap = {};
+      getOnlineUsers().forEach(u => { nameMap[u.uid] = u.name; });
       const items = [];
       for (let ch = 1; ch <= 60; ch++) {
         const chInfo = getChannelData(currentBoss.id, ch);
         const cycleMode = getBossCycleMode(currentBoss, ch);
+        const asg = getAssignList(currentBoss.id, ch).map(e => ({ ...e, name: nameMap[e.uid] || e.name }));
         let remainingMs = Infinity;
-        let statusText = '尚未計時';
+        let statusText = '未計時';
         let estimatedText = '\u00a0';
         let cardClass = '';
         let hasTimerClass = '';
@@ -1574,15 +1793,15 @@
 
           const estMinDate = new Date(killTimeNum + minMin * 60 * 1000);
           if (minMin === maxMin) {
-            estimatedText = `預計 ${formatTime(estMinDate)}`;
+            estimatedText = formatTime(estMinDate);
           } else {
-            estimatedText = `預計 ${formatTime(estMinDate)}~${formatTime(new Date(killTimeNum + maxMin * 60 * 1000))}`;
+            estimatedText = `${formatTime(estMinDate)}~${formatTime(new Date(killTimeNum + maxMin * 60 * 1000))}`;
           }
 
           if (st.cdStart) {
             const cdElapsedSec = (now - parseInt(st.cdStart)) / 1000;
             cardClass = 'player-cd';
-            statusText = `冷卻中 ${Math.max(0, Math.ceil(playerCdSec - cdElapsedSec))}s`;
+            statusText = `冷卻 ${Math.max(0, Math.ceil(playerCdSec - cdElapsedSec))}s`;
           } else {
             // 與左側列表相同的「即將重生」判斷（SOON_SEC）
             if (minMinSec - elapsedSec <= SOON_SEC) hasTimerClass += ' soon';
@@ -1592,7 +1811,7 @@
               const leftSec = Math.floor(minMinSec - elapsedSec);
               const m = Math.floor(leftSec / 60);
               const sec = leftSec % 60;
-              statusText = `${m}分${sec < 10 ? '0' : ''}${sec}秒`;
+              statusText = `${m}:${sec < 10 ? '0' : ''}${sec}`;
             } else {
               cardClass = 'maybe';
               // 手動巡迴：停在此狀態直到按下「擊殺」
@@ -1604,7 +1823,7 @@
         items.push({
           ch: ch, remainingMs: remainingMs, statusText: statusText, estimatedText: estimatedText,
           cls: `channel-card ${cardClass} ${hasTimerClass}`.replace(/\s+/g, ' ').trim(),
-          isSolo: chInfo.isSolo, isSteal: chInfo.isSteal, isUnsure: chInfo.isUnsure, cycleMode: cycleMode
+          isSolo: chInfo.isSolo, isSteal: chInfo.isSteal, isUnsure: chInfo.isUnsure, cycleMode: cycleMode, asg: asg
         });
       }
 
@@ -1624,7 +1843,12 @@
       items.forEach(item => {
         const r = cardRefs[item.ch];
         if (r.cls !== item.cls) { r.el.className = item.cls; r.cls = item.cls; }
-        if (r.statusText !== item.statusText) { r.status.textContent = item.statusText; r.statusText = item.statusText; }
+        if (r.statusText !== item.statusText) {
+          r.status.textContent = item.statusText; r.statusText = item.statusText;
+          r.status.classList.toggle('long', !/^[\d:]+$/.test(item.statusText)); // 文字型狀態縮小字級
+        }
+        const asgSig = item.asg.map(e => e.uid + ':' + e.name + ':' + (e.ally ? 1 : 0)).join('+') + '|' + myUid;
+        if (r.asgSig !== asgSig) { r.asg.innerHTML = assignChipsHtml(item); r.asgSig = asgSig; }
         if (r.estText !== item.estimatedText) { r.est.textContent = item.estimatedText; r.estText = item.estimatedText; }
         if (r.soloOn !== item.isSolo) { r.solo.classList.toggle('active', item.isSolo); r.soloOn = item.isSolo; }
         if (r.stealOn !== item.isSteal) { r.steal.classList.toggle('active', item.isSteal); r.stealOn = item.isSteal; }
@@ -1679,7 +1903,7 @@
       .list{flex:1;overflow-y:auto;padding:0.6667rem 0.6667rem 0.25rem}
       .list::-webkit-scrollbar{width:0.5rem}
       .list::-webkit-scrollbar-thumb{background:#cbbf9f;border-radius:0.25rem}
-      .row{display:flex;align-items:center;gap:0.4167rem;min-height:2.75rem;margin-bottom:0.4167rem;padding:0.3333rem 0.5rem 0.3333rem 0.6667rem;background:#fff;border:1px solid #e4dccb;border-left:0.3333rem solid #16a34a;border-radius:0.6667rem;box-shadow:0 1px 3px rgba(60,40,10,.08)}
+      .row{display:flex;align-items:center;gap:0.4167rem;height:3.1rem;margin-bottom:0.4167rem;padding:0 0.5rem 0 0.6667rem;background:#fff;border:1px solid #e4dccb;border-left:0.3333rem solid #16a34a;border-radius:0.6667rem;box-shadow:0 1px 3px rgba(60,40,10,.08)}
       .row.soon{border-left-color:#e02424;background:#fff4f2}
       .row.cd{border-left-color:#1abc9c;background:#effaf7}
       .row.flash{animation:fl .7s ease-out}
@@ -1693,9 +1917,9 @@
       .row .c{flex:0 0 3.3rem;font-weight:bold;font-size:1.25rem;white-space:nowrap}
       .row .t{flex:1;min-width:0;font-size:1rem;color:#8a7d66;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-variant-numeric:tabular-nums}
       .nt{display:flex;gap:0.1667rem;flex:0 0 auto}
-      .asg{flex:0 0 3.4rem;display:flex;gap:0.1667rem}
-      .chip{width:1.6rem;height:1.6rem;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-style:normal;font-size:0.9167rem;font-weight:bold;line-height:1;cursor:pointer;border:2px solid transparent;box-shadow:0 1px 2px rgba(0,0,0,.3);transition:transform .1s;flex:0 0 auto;box-sizing:border-box}
-      .chip.two{font-size:0.6667rem;letter-spacing:-0.02em}
+      .asg{flex:0 0 3.2rem;display:flex;gap:0.1667rem}
+      .chip{width:1.5rem;height:1.5rem;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-style:normal;font-size:0.8333rem;font-weight:bold;line-height:1;cursor:pointer;border:2px solid transparent;box-shadow:0 1px 2px rgba(0,0,0,.3);transition:transform .1s;flex:0 0 auto;box-sizing:border-box}
+      .chip.two{font-size:0.5833rem;letter-spacing:-0.03em}
       .chip.ally{border-radius:0.4rem}
       .chip.me{border-color:#f3c969;box-shadow:0 0 0 1px #fff,0 0 5px rgba(243,201,105,.95)}
       .chip:hover{transform:scale(1.12)}
@@ -1875,7 +2099,8 @@
       return rows;
     }
 
-    // 單行裡的人員圓章：固定兩個位置（寬度不變）。沒人 → 第一格「＋」；一人 → 第二格淡淡的「＋」
+    // 人員圓章：固定兩個位置（寬度不變）。沒人 → 第一格「＋」；一人 → 第二格淡淡的「＋」
+    //  左鍵「＋」＝我認領；已有我在內時，第二格「＋」＝開選單替別人加入；右鍵任何圓章／「＋」＝開選單
     function assignChipsHtml(r) {
       const dup = r.asg.length === 2 && nameChars(r.asg[0].name, 1) === nameChars(r.asg[1].name, 1); // 首字相同改顯示前兩字
       let html = '';
@@ -1883,9 +2108,9 @@
         const e = r.asg[i];
         if (e) {
           const label = nameChars(e.name, dup ? 2 : 1);
-          html += `<i class="chip${dup ? ' two' : ''}${e.uid === myUid ? ' me' : ''}${e.ally ? ' ally' : ''}" style="background:${chipColor(e.uid)}" data-act="asg-chip" data-ch="${r.ch}" data-uid="${popEsc(e.uid)}" title="${popEsc(e.name)}${e.ally ? '（聯盟）' : ''}${e.uid === myUid ? '：點一下取消認領' : '：點一下改派'}">${popEsc(label)}</i>`;
+          html += `<i class="chip${dup ? ' two' : ''}${e.uid === myUid ? ' me' : ''}${e.ally ? ' ally' : ''}" style="background:${chipColor(e.uid)}" data-act="asg-chip" data-ch="${r.ch}" data-uid="${popEsc(e.uid)}" title="${popEsc(e.name)}${e.ally ? '（聯盟）' : ''}${e.uid === myUid ? '：左鍵取消認領　右鍵開選單' : '：左鍵開選單改派'}">${popEsc(label)}</i>`;
         } else if (i === r.asg.length) {
-          html += `<i class="chip empty${i === 1 ? ' second' : ''}" data-act="asg-add" data-ch="${r.ch}" title="點一下認領這個頻道">＋</i>`;
+          html += `<i class="chip empty${i === 1 ? ' second' : ''}" data-act="asg-add" data-slot="${i + 1}" data-ch="${r.ch}" title="左鍵：我來負責　右鍵：替別人加入">＋</i>`;
         } else {
           html += `<i class="chip ghost"></i>`;
         }
@@ -1893,22 +2118,23 @@
       return `<span class="asg">${html}</span>`;
     }
 
-    // 點別人的圓章：小選單，可勾選線上的人加入／移除，或清除這個頻道的人員
-    function closeAssignMenu() {
-      if (!popWin) return;
-      const m = popWin.document.getElementById('amenu');
+    // 人員選單：可勾選線上的人加入／移除（也能替別人加入），或清除這個頻道的人員。
+    // ctx = { doc, win, boss }：小視窗與主視窗共用同一套。
+    function closeAssignMenu(doc) {
+      const d = doc || (popWin ? popWin.document : document);
+      const m = d.getElementById('amenu');
       if (m) m.remove();
     }
-    function openAssignMenu(ch, anchor) {
-      closeAssignMenu();
-      const doc = popWin.document;
-      const cur = getAssignList(popBoss.id, ch);
+    function openAssignMenu(ch, anchor, ctx) {
+      closeAssignMenu(ctx.doc);
+      const doc = ctx.doc, boss = ctx.boss;
+      const cur = getAssignList(boss.id, ch);
       const people = {};
       getOnlineUsers().forEach(u => { people[u.uid] = { uid: u.uid, name: u.name, ally: !!u.ally }; });
       cur.forEach(e => { if (!people[e.uid]) people[e.uid] = { uid: e.uid, name: e.name, ally: e.ally }; });
       const menu = doc.createElement('div');
       menu.id = 'amenu'; menu.className = 'amenu';
-      menu.innerHTML = `<div class="ah">${popEsc(popBoss.name)} ${ch} 頻　人員（最多 ${ASSIGN_MAX} 人）</div><div class="al" id="al"></div><div class="ahint" id="ahint"></div><button type="button" class="aclr" id="aclr">清除這個頻道的人員</button>`;
+      menu.innerHTML = `<div class="ah">${popEsc(boss.name)} ${ch} 頻　人員（最多 ${ASSIGN_MAX} 人）</div><div class="al" id="al"></div><div class="ahint" id="ahint"></div><button type="button" class="aclr" id="aclr">清除這個頻道的人員</button>`;
       const al = menu.querySelector('#al');
       const hint = menu.querySelector('#ahint');
       Object.keys(people).forEach(uid => {
@@ -1918,19 +2144,46 @@
         item.className = 'ai' + (!on && cur.length >= ASSIGN_MAX ? ' dis' : '');
         item.innerHTML = `<i class="chip${u.ally ? ' ally' : ''}" style="background:${chipColor(uid)}">${popEsc(nameChars(u.name, 1))}</i><span class="nm">${popEsc(u.name)}${u.ally ? '（聯盟）' : ''}${uid === myUid ? '（我）' : ''}</span><span class="ck">${on ? '✓' : ''}</span>`;
         item.addEventListener('click', () => {
-          if (on) { assignRemove(popBoss, ch, uid); closeAssignMenu(); }
+          if (on) { assignRemove(boss, ch, uid); closeAssignMenu(doc); }
           else if (cur.length >= ASSIGN_MAX) { hint.textContent = `這個頻道已有 ${ASSIGN_MAX} 人，請先移除一位。`; }
-          else { assignAddUser(popBoss, ch, u); closeAssignMenu(); }
+          else { assignAddUser(boss, ch, u); closeAssignMenu(doc); }
         });
         al.appendChild(item);
       });
-      menu.querySelector('#aclr').addEventListener('click', () => { assignClear(popBoss, ch); closeAssignMenu(); });
+      menu.querySelector('#aclr').addEventListener('click', () => { assignClear(boss, ch); closeAssignMenu(doc); });
       doc.body.appendChild(menu);
       const r = anchor.getBoundingClientRect();
-      const w = popWin.innerWidth || 400, h = popWin.innerHeight || 330;
+      const w = ctx.win.innerWidth || 400, h = ctx.win.innerHeight || 330;
       const mw = menu.offsetWidth, mh = menu.offsetHeight;
       menu.style.left = Math.max(4, Math.min(r.left, w - mw - 4)) + 'px';
       menu.style.top = Math.max(4, Math.min(r.bottom + 4, h - mh - 4)) + 'px';
+    }
+
+    function handleAssignClick(el, ctx) {
+      const ch = parseInt(el.dataset.ch, 10);
+      if (el.dataset.act === 'asg-add') {
+        const mineIn = getAssignList(ctx.boss.id, ch).some(e => e.uid === myUid);
+        if (el.dataset.slot === '2' && mineIn) openAssignMenu(ch, el, ctx); // 我已經在內：第二格「＋」用來替別人加入
+        else assignAddMe(ctx.boss, ch);
+      } else if (el.dataset.act === 'asg-chip') {
+        if (el.dataset.uid === myUid) assignRemove(ctx.boss, ch, myUid);
+        else openAssignMenu(ch, el, ctx);
+      }
+    }
+    // 在某個文件上掛好人員圓章的點擊／右鍵／點外面關閉選單
+    function wireAssignEvents(doc, container, getCtx) {
+      container.addEventListener('click', e => {
+        const el = e.target.closest('[data-act^="asg"]');
+        if (el) handleAssignClick(el, getCtx());
+      });
+      container.addEventListener('contextmenu', e => {
+        const el = e.target.closest('[data-act^="asg"]');
+        if (!el) return;
+        e.preventDefault();
+        openAssignMenu(parseInt(el.dataset.ch, 10), el, getCtx());
+      });
+      doc.addEventListener('mousedown', e => { if (!e.target.closest('#amenu') && !e.target.closest('[data-act^="asg"]')) closeAssignMenu(doc); });
+      doc.addEventListener('keydown', e => { if (e.key === 'Escape') closeAssignMenu(doc); });
     }
 
     // 標題列的「全自動／全手動」按鈕狀態（60 個頻道全部相同才會亮起）
@@ -2116,22 +2369,16 @@
 
       doc.getElementById('pl').addEventListener('click', e => {
         const el = e.target.closest('[data-act]');
-        if (!el) return;
+        if (!el || el.dataset.act.indexOf('asg') === 0) return; // 人員圓章由 wireAssignEvents 處理
         const ch = parseInt(el.dataset.ch, 10);
         if (el.dataset.act === 'kill') popKill(ch);
         else if (el.dataset.act === 'cycle') popCycle(ch);
         else if (el.dataset.act === 'note') toggleNote(ch, el.dataset.type, popBoss);
-        else if (el.dataset.act === 'asg-add') assignAddMe(popBoss, ch);
-        else if (el.dataset.act === 'asg-chip') {
-          if (el.dataset.uid === myUid) assignRemove(popBoss, ch, myUid);
-          else openAssignMenu(ch, el);
-        }
         else if (el.dataset.act === 'reset') armClick(w, el, '重置', () => popReset(ch));
       });
 
-      // 點選單以外的地方、或按 Esc，就關閉人員選單
-      doc.addEventListener('mousedown', e => { if (!e.target.closest('#amenu') && !e.target.closest('[data-act="asg-chip"]')) closeAssignMenu(); });
-      doc.addEventListener('keydown', e => { if (e.key === 'Escape') closeAssignMenu(); });
+      // 人員圓章：左鍵／右鍵／選單（點外面或按 Esc 關閉）
+      wireAssignEvents(doc, doc.getElementById('pl'), () => ({ doc: doc, win: w, boss: popBoss }));
       w.addEventListener('pagehide', cleanupPopout);
       popWin = w;
       popSig = null;
@@ -2609,14 +2856,16 @@
           ? '目前沒有分享任何野王<br><span>公會管理員分享野王後，這裡會自動出現</span>'
           : '載入中…';
         document.getElementById('current-boss-name').innerHTML = `${allyLoaded ? '尚未分享野王' : '載入中…'} 
-          <span class="room-badge">聯盟共享</span> <span class="version-badge">${APP_VERSION}</span>`;
+          <span class="room-badge">聯盟共享</span> ${versionBadgeHtml()}`;
         document.getElementById('current-boss-info').textContent = '';
       } else if (allyEmptyShown) {
         selectBoss(currentBoss); // 剛從空白狀態恢復：重畫標題與內容
       }
       allyEmptyShown = empty;
     }
-    const ALLY_SETTING_KEYS = ['sharedBosses', 'bossCdSettings', 'bossRangeSettings', 'bossCycleSettings'];
+    const ALLY_SETTING_KEYS = ['sharedBosses', 'bossCdSettings', 'bossCycleSettings'];
+    let allyDefs = {};     // 被分享的野王的清單資料 { <bossId>: {name, level, minMin, maxMin} }
+    let allyDefRefs = {};
 
     function scheduleAllyRender() {
       if (allyRenderTimer) return;
@@ -2625,8 +2874,8 @@
         ALLY_SETTING_KEYS.forEach(k => { timerCache[k] = allyData[k]; });
         bossCdCache = allyData.bossCdSettings;
         bossCycleCache = allyData.bossCycleSettings;
-        bossRangeCache = allyData.bossRangeSettings;
-        applyBossOverrides();
+        bossDefsCache = allyDefs;
+        rebuildBossList();
         const vis = visibleBosses();
         if (vis.length && vis.indexOf(currentBoss) === -1) { selectBoss(vis[0]); }
         applyAllyEmptyState();
@@ -2644,11 +2893,20 @@
       Object.keys(allyBossRefs).forEach(id => {
         if (!shared[id]) { allyBossRefs[id].off(); delete allyBossRefs[id]; delete timerCache[id]; }
       });
+      Object.keys(allyDefRefs).forEach(id => {
+        if (!shared[id]) { allyDefRefs[id].off(); delete allyDefRefs[id]; delete allyDefs[id]; }
+      });
       Object.keys(shared).forEach(id => {
         if (!shared[id] || allyBossRefs[id]) return;
         const ref = db.ref(`rooms/${roomId}/${id}`);
         allyBossRefs[id] = ref;
         ref.on('value', snap => { timerCache[id] = snap.val() || {}; scheduleAllyRender(); }, () => { /* 已取消分享 */ });
+      });
+      Object.keys(shared).forEach(id => {
+        if (!shared[id] || allyDefRefs[id]) return;
+        const dref = db.ref(`rooms/${roomId}/bossDefs/${id}`);
+        allyDefRefs[id] = dref;
+        dref.on('value', snap => { const v = snap.val(); if (v) allyDefs[id] = v; else delete allyDefs[id]; scheduleAllyRender(); }, () => {});
       });
     }
 
@@ -2669,6 +2927,8 @@
     function stopAllyListeners() {
       Object.keys(allyBossRefs).forEach(id => { try { allyBossRefs[id].off(); } catch (e) {} });
       allyBossRefs = {};
+      Object.keys(allyDefRefs).forEach(id => { try { allyDefRefs[id].off(); } catch (e) {} });
+      allyDefRefs = {}; allyDefs = {};
       ALLY_SETTING_KEYS.forEach(k => { try { db.ref(`rooms/${roomId}/${k}`).off(); } catch (e) {} });
       timerCache = {};
       allyLoaded = false;
@@ -2742,6 +3002,7 @@
     updateDiscordToggleBtn();
     initVersionCheck();
     listenToFirebase();
+    wireAssignEvents(document, document.getElementById('channel-grid'), () => ({ doc: document, win: window, boss: currentBoss }));
     setInterval(tick, 1000);
     selectBoss(bosses[0]);
     if (ALLY_MODE) applyAllyEmptyState(); // 盟友版：登入前也不顯示預設的紅寶王，等收到分享清單才決定顯示哪些野王
