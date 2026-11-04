@@ -2648,9 +2648,9 @@
         .concat(Object.keys(allies).map(k => allies[k]).sort(sortFn));
     }
 
-    // 對方陣營的標籤：公會版看到盟友標「聯盟」，盟友版看到公會成員標「公會」
+    // 對方陣營的標籤：公會版看到盟友標「聯盟」，盟友版看到公會成員標「啾察隊」
     function crossTag(u) {
-      if (ALLY_MODE) return u.ally ? null : '公會';
+      if (ALLY_MODE) return u.ally ? null : '啾察隊';
       return u.ally ? '聯盟' : null;
     }
 
@@ -2659,7 +2659,7 @@
       document.getElementById('onlineCount').textContent = users.length;
       const crossN = users.filter(u => crossTag(u)).length;
       const crossEl = document.getElementById('onlineAllyCount');
-      if (crossEl) crossEl.textContent = crossN ? `（含${ALLY_MODE ? '公會' : '聯盟'} ${crossN} 人）` : '';
+      if (crossEl) crossEl.textContent = crossN ? `（含${ALLY_MODE ? '啾察隊' : '聯盟'} ${crossN} 人）` : '';
       list.innerHTML = '';
       if (!users.length) {
         const empty = document.createElement('div');
@@ -2692,7 +2692,7 @@
       const btn = document.getElementById('online-btn');
       if (btn) {
         const crossN = users.filter(u => crossTag(u)).length;
-        btn.textContent = `線上 ${users.length} 人` + (crossN ? `（${ALLY_MODE ? '公會' : '聯盟'} ${crossN}）` : '');
+        btn.textContent = `線上 ${users.length} 人` + (crossN ? `（${ALLY_MODE ? '啾察隊' : '聯盟'} ${crossN}）` : '');
       }
       const modal = document.getElementById('onlineModal');
       if (modal && modal.style.display === 'flex') fillOnlineList(users);
