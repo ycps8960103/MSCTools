@@ -624,7 +624,8 @@
       '• 新增組隊分配：每個頻道最多 2 人；網頁與小視窗都能認領，也能替別人加入',
       '• 尚未計時的頻道也能先分配人員，並顯示在小視窗',
       '• 網頁版介面簡化：頻道卡片精簡、管理功能收進「管理設定」',
-      '• 小視窗列高維持精簡'
+      '• 小視窗列高維持精簡、視窗更窄；可切換「全部／我的／未計時」，並可依時間或頻道排序',
+      '• 擊殺後會自動移除該頻道的人員分配'
     ].join('\n');
 
     // 聯盟版旗標：index.html（公會版）為 false；ally.html（盟友版）由同一份程式產生，此值為 true。
@@ -673,6 +674,7 @@
     });
 
     const roomId = "啾察隊";
+    const GUILD_LABEL = roomId; // 盟友版線上名單裡，公會成員顯示的名稱
     const UNLOCK_KEY = ALLY_MODE ? `unlocked_ally_${roomId}` : `unlocked_${roomId}`; // 盟友版與公會版的解鎖狀態分開記錄
     // Webhook 不再寫在程式碼裡：通過密碼驗證後，才從資料庫 rooms/<小隊>/discordWebhook 讀取
     let DEFAULT_WEBHOOK_URL = "";
@@ -1518,6 +1520,9 @@
         playerCdStartTime: null 
       });
       
+      // 擊殺後，這個頻道的人員分配就完成了任務：一併移除（下一輪再重新認領）
+      db.ref(`rooms/${roomId}/${boss.id}/assign/ch${ch}`).remove().catch(() => {});
+
       delete notifiedState[`${boss.id}_${ch}_before`];
       delete notifiedState[`${boss.id}_${ch}_min`];
       delete notifiedState[`${boss.id}_${ch}_max`];
@@ -1865,7 +1870,7 @@
     }
 
     /* ==========================================
-       彈出置頂小視窗（預設 400x330，可自行拉大縮小，內容會等比縮放）：只顯示「頻道」「預計重生時間」與擊殺鈕，與主視窗即時同步。
+       彈出置頂小視窗（預設 330x330，可自行拉大縮小，內容會等比縮放）：只顯示「頻道」「預計重生時間」與擊殺鈕，與主視窗即時同步。
        - Chrome / Edge：使用 Document Picture-in-Picture，視窗會永遠浮在最上層。
        - 其他瀏覽器：退回一般小視窗（無法保證置頂，可搭配作業系統的「視窗置頂」工具）。
        小視窗綁定按下按鈕當下的那隻王，之後主視窗切換別隻王也不受影響。
@@ -1880,46 +1885,46 @@
 
     const POPOUT_CSS = `
       *{box-sizing:border-box}
-      html{font-size:clamp(9px,2.6738vw,28px)}
+      html{font-size:clamp(9px,3.125vw,28px)}
       html,body{margin:0;height:100%}
       body{display:flex;flex-direction:column;background:#f4eee0;color:#3a3226;font-family:"Microsoft JhengHei","PingFang TC",sans-serif;font-size:1rem;user-select:none}
       button{font-family:inherit}
-      .hd{flex:0 0 3rem;display:flex;align-items:center;gap:0.5rem;padding:0 0.75rem;background:linear-gradient(135deg,#5c4327,#7d5c36);color:#fff;box-shadow:0 2px 6px rgba(60,40,10,.25);position:relative;z-index:1}
-      .hd .nm{flex:1;min-width:0;font-size:1.4167rem;font-weight:bold;letter-spacing:.04em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+      .hd{flex:0 0 3rem;display:flex;align-items:center;gap:0.4167rem;padding:0 0.6667rem;background:linear-gradient(135deg,#5c4327,#7d5c36);color:#fff;box-shadow:0 2px 6px rgba(60,40,10,.25);position:relative;z-index:1}
+      .hd .nm{flex:1;min-width:0;font-size:1.3333rem;font-weight:bold;letter-spacing:.04em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
       .seg{display:flex;border-radius:0.4167rem;overflow:hidden;background:rgba(255,255,255,.16)}
-      .seg button{border:0;background:transparent;color:#f3e9d6;font-size:1rem;padding:0.4583rem 0.8333rem;cursor:pointer;transition:background .15s}
+      .seg button{border:0;background:transparent;color:#f3e9d6;font-size:0.9167rem;padding:0.4167rem 0.6667rem;cursor:pointer;transition:background .15s}
       .seg button+button{border-left:1px solid rgba(255,255,255,.2)}
       .seg button:hover:not(:disabled):not(.on){background:rgba(255,255,255,.18)}
       .seg button.on{background:#f3c969;color:#4a3519;font-weight:bold}
       .seg button.arm{background:#e02424;color:#fff;font-weight:bold}
       .seg button:disabled{opacity:.4;cursor:not-allowed}
-      .add{flex:0 0 auto;display:flex;gap:0.5rem;padding:0.5rem 0.75rem;background:#ebe3d0;border-bottom:1px solid #d8cdb2}
-      .add input{width:6rem;height:2.5rem;padding:0 0.6667rem;border:1px solid #cdbf9f;border-radius:0.5rem;background:#fff;font-size:1.3333rem;font-family:inherit;user-select:text;outline:none}
+      .add{flex:0 0 auto;display:flex;gap:0.4167rem;padding:0.4167rem 0.6667rem;background:#ebe3d0;border-bottom:1px solid #d8cdb2}
+      .add input{width:5rem;height:2.3rem;padding:0 0.6667rem;border:1px solid #cdbf9f;border-radius:0.5rem;background:#fff;font-size:1.25rem;font-family:inherit;user-select:text;outline:none}
       .add input:focus{border-color:#b8986c;box-shadow:0 0 0 2px rgba(184,152,108,.3)}
-      .hsort{flex:0 0 auto;border:0;border-radius:0.4167rem;background:rgba(255,255,255,.16);color:#f3e9d6;font-size:1rem;padding:0.4583rem 0.8333rem;cursor:pointer;white-space:nowrap;transition:background .15s}
+      .hsort{flex:0 0 auto;border:0;border-radius:0.4167rem;background:rgba(255,255,255,.16);color:#f3e9d6;font-size:0.9167rem;padding:0.4167rem 0.6667rem;cursor:pointer;white-space:nowrap;transition:background .15s}
       .hsort:hover{background:rgba(255,255,255,.28)}
-      .add button{flex:1;height:2.5rem;border:0;border-radius:0.5rem;background:linear-gradient(#58b85c,#3f9d44);color:#fff;font-size:1.3333rem;font-weight:bold;letter-spacing:.1em;cursor:pointer;box-shadow:0 1px 3px rgba(0,0,0,.22)}
+      .add button{flex:1;height:2.3rem;border:0;border-radius:0.5rem;background:linear-gradient(#58b85c,#3f9d44);color:#fff;font-size:1.25rem;font-weight:bold;letter-spacing:.1em;cursor:pointer;box-shadow:0 1px 3px rgba(0,0,0,.22)}
       .add button:active,.row .kill:active{transform:scale(.96)}
-      .list{flex:1;overflow-y:auto;padding:0.6667rem 0.6667rem 0.25rem}
+      .list{flex:1;overflow-y:auto;padding:0.5rem 0.5rem 0.25rem}
       .list::-webkit-scrollbar{width:0.5rem}
       .list::-webkit-scrollbar-thumb{background:#cbbf9f;border-radius:0.25rem}
-      .row{display:flex;align-items:center;gap:0.4167rem;height:3.1rem;margin-bottom:0.4167rem;padding:0 0.5rem 0 0.6667rem;background:#fff;border:1px solid #e4dccb;border-left:0.3333rem solid #16a34a;border-radius:0.6667rem;box-shadow:0 1px 3px rgba(60,40,10,.08)}
+      .row{display:flex;align-items:center;gap:0.3333rem;height:3.2rem;margin-bottom:0.3333rem;padding:0 0.4167rem 0 0.5rem;background:#fff;border:1px solid #e4dccb;border-left:0.25rem solid #16a34a;border-radius:0.6667rem;box-shadow:0 1px 3px rgba(60,40,10,.08)}
       .row.soon{border-left-color:#e02424;background:#fff4f2}
       .row.cd{border-left-color:#1abc9c;background:#effaf7}
       .row.flash{animation:fl .7s ease-out}
       @keyframes fl{0%{box-shadow:0 0 0 3px rgba(76,175,80,.8)}100%{box-shadow:0 1px 3px rgba(60,40,10,.08)}}
-      .mode{flex:0 0 1.75rem;height:1.75rem;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:0.9167rem;font-weight:bold;color:#fff;cursor:pointer;box-shadow:0 1px 2px rgba(0,0,0,.25);transition:transform .12s}
+      .mode{flex:0 0 1.5rem;height:1.5rem;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:0.8333rem;font-weight:bold;color:#fff;cursor:pointer;box-shadow:0 1px 2px rgba(0,0,0,.25);transition:transform .12s}
       .mode:hover:not(.locked){transform:scale(1.15)}
       .mode.auto{background:#4a6278}
       .mode.manual{background:#e67e22}
       .mode.locked{opacity:.5;cursor:not-allowed}
       body.ally .mode{display:none}
-      .row .c{flex:0 0 3.3rem;font-weight:bold;font-size:1.25rem;white-space:nowrap}
-      .row .t{flex:1;min-width:0;font-size:1rem;color:#8a7d66;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-variant-numeric:tabular-nums}
-      .nt{display:flex;gap:0.1667rem;flex:0 0 auto}
-      .asg{flex:0 0 3.2rem;display:flex;gap:0.1667rem}
-      .chip{width:1.5rem;height:1.5rem;padding:0;margin:0;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-style:normal;font-size:0.8333rem;font-weight:bold;line-height:1;cursor:pointer;border:2px solid transparent;box-shadow:0 1px 2px rgba(0,0,0,.3);transition:transform .1s;flex:0 0 auto;box-sizing:border-box}
-      .chip.two{font-size:0.5833rem;letter-spacing:-0.03em}
+      .row .c{flex:0 0 2.9rem;font-weight:bold;font-size:1.1667rem;white-space:nowrap}
+      .row .t{flex:1;min-width:0;font-size:0.9167rem;color:#8a7d66;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-variant-numeric:tabular-nums}
+      .nt{display:flex;gap:0.125rem;flex:0 0 auto}
+      .asg{flex:0 0 3rem;display:flex;gap:0.1667rem}
+      .chip{width:1.4rem;height:1.4rem;padding:0;margin:0;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-style:normal;font-size:0.75rem;font-weight:bold;line-height:1;cursor:pointer;border:2px solid transparent;box-shadow:0 1px 2px rgba(0,0,0,.3);transition:transform .1s;flex:0 0 auto;box-sizing:border-box}
+      .chip.two{font-size:0.5rem;letter-spacing:-0.03em}
       .chip.ally{border-radius:0.4rem}
       .chip.me{border-color:#f3c969;box-shadow:0 0 0 1px #fff,0 0 5px rgba(243,201,105,.95)}
       .chip:hover{transform:scale(1.12)}
@@ -1927,11 +1932,11 @@
       .chip.empty.second{opacity:.5}
       .chip.ghost{visibility:hidden;pointer-events:none}
       .row.idle{border-left-color:#c8c0ae;background:#faf8f3}
-      .row.idle .cd{color:#a39a85;font-size:1rem}
+      .row.idle .cd{color:#a39a85;font-size:0.9167rem}
       .row.idle .t{opacity:.55}
       .row.idle .rs{visibility:hidden}
       .hsort.on{background:#f3c969;color:#4a3519;font-weight:bold}
-      .amenu{position:fixed;z-index:30;width:16rem;max-width:94vw;background:#fff;border:1px solid #d8cdb2;border-radius:0.6667rem;box-shadow:0 6px 22px rgba(60,40,10,.35);overflow:hidden}
+      .amenu{position:fixed;z-index:30;width:15rem;max-width:94vw;background:#fff;border:1px solid #d8cdb2;border-radius:0.6667rem;box-shadow:0 6px 22px rgba(60,40,10,.35);overflow:hidden}
       .amenu .ah{background:linear-gradient(135deg,#5c4327,#7d5c36);color:#fff;font-size:0.9167rem;padding:0.5rem 0.75rem}
       .amenu .al{max-height:12rem;overflow-y:auto}
       .amenu .ai{display:flex;align-items:center;gap:0.5rem;padding:0.4167rem 0.75rem;cursor:pointer;font-size:1rem}
@@ -1943,17 +1948,17 @@
       .amenu .ahint{padding:0.3333rem 0.75rem;font-size:0.8333rem;color:#c0392b;min-height:1.4rem}
       .amenu .aclr{display:block;width:100%;border:0;border-top:1px solid #eee4cf;background:#faf6ea;color:#8a3b2a;font-size:0.9167rem;padding:0.5rem;cursor:pointer}
       .amenu .aclr:hover{background:#f3e6c9}
-      .row .n{width:1.5rem;height:1.5rem;border-radius:50%;display:flex;align-items:center;justify-content:center;font-style:normal;font-size:0.875rem;font-weight:bold;line-height:1;border:1px solid #d3cab5;color:#b5ad9a;background:#fff;opacity:.55;cursor:pointer;transition:transform .1s,opacity .15s}
+      .row .n{width:1.25rem;height:1.25rem;border-radius:50%;display:flex;align-items:center;justify-content:center;font-style:normal;font-size:0.75rem;font-weight:bold;line-height:1;border:1px solid #d3cab5;color:#b5ad9a;background:#fff;opacity:.55;cursor:pointer;transition:transform .1s,opacity .15s}
       .row .n:hover{opacity:1;transform:scale(1.12)}
       .row .n.on{opacity:1;background:#fff}
       .row .n.on.solo{border-color:#e74c3c;color:#e74c3c;box-shadow:0 0 4px rgba(231,76,60,.5)}
       .row .n.on.steal{border-color:#2980b9;color:#2980b9;box-shadow:0 0 4px rgba(41,128,185,.5)}
       .row .n.on.unsure{border-color:#8e44ad;color:#8e44ad;box-shadow:0 0 4px rgba(142,68,173,.5)}
-      .row .cd{flex:0 0 4.4rem;text-align:right;font-size:1.5833rem;line-height:1;font-weight:800;white-space:nowrap;font-variant-numeric:tabular-nums;color:#2d6a31}
-      .row .cd.long{font-size:1.0833rem}
+      .row .cd{flex:0 0 3.9rem;text-align:right;font-size:1.4167rem;line-height:1;font-weight:800;white-space:nowrap;font-variant-numeric:tabular-nums;color:#2d6a31}
+      .row .cd.long{font-size:0.9167rem}
       .row.soon .cd{color:#c0392b}
       .row.cd .cd{color:#14917a}
-      .row button{flex:0 0 3.5rem;height:2rem;padding:0;border:0;border-radius:0.4583rem;font-size:1.0833rem;font-weight:bold;cursor:pointer;transition:transform .08s,background .15s,filter .15s}
+      .row button{flex:0 0 3rem;height:1.85rem;padding:0;border:0;border-radius:0.4167rem;font-size:1rem;font-weight:bold;cursor:pointer;transition:transform .08s,background .15s,filter .15s}
       .row .kill{background:linear-gradient(#58b85c,#3f9d44);color:#fff;box-shadow:0 1px 2px rgba(0,0,0,.2)}
       .row .kill:hover{filter:brightness(1.08)}
       .row .rs{background:#ece6d6;color:#6b5f4c}
@@ -1966,12 +1971,12 @@
        組隊分配：每個頻道最多 2 人（資料存在 rooms/<小隊>/<bossId>/assign/ch<N>/{s1,s2}）
        - 圓章內容為暱稱首字，顏色由 uid 固定決定；公會成員是圓形、盟友是圓角方形；自己的有金色外框。
        - 用資料庫交易寫入，兩個人同時認領同一頻道也不會互相覆蓋或超過 2 人。
-       - 擊殺／重置單一頻道不會清掉分配；按「重置全頻道」會一起清除（整隻王的資料被移除）；
+       - 擊殺後會自動移除該頻道的分配（任務完成，下一輪再認領）；單純「重置」單一頻道不會清掉分配；按「重置全頻道」會一起清除（整隻王的資料被移除）；
          超過 24 小時沒更新的分配由公會端網頁自動清除。
     ========================================== */
     const ASSIGN_MAX = 2;
     const ASSIGN_STALE_MS = 24 * 60 * 60 * 1000;
-    let popMineOnly = false;
+    let popView = 'all'; // 小視窗顯示範圍：all 全部｜mine 分配給我的｜untimed 尚未計時的
 
     function popEsc(v) {
       return String(v).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -2047,13 +2052,20 @@
       });
     }
 
-    // 依重生時間排序；尚未計時（remainMs = Infinity）的頻道排在最後
+    // 依重生時間排序；尚未計時（remainMs = Infinity）的頻道排在最後。
+    // 尚未計時的頻道之間沒有時間可比：有人認領的排前面（認領得早的在前），其餘依頻道順序。
     function popTimeCompare(a, b) {
       const x = a.remainMs, y = b.remainMs;
+      if (x === Infinity && y === Infinity) {
+        const first = r => (r.asg && r.asg.length) ? Math.min.apply(null, r.asg.map(e => e.ts || 0)) : Infinity;
+        const fa = first(a), fb = first(b);
+        return (fa === fb ? 0 : (fa < fb ? -1 : 1)) || a.ch - b.ch;
+      }
       return (x === y ? 0 : (x < y ? -1 : 1)) || a.ch - b.ch;
     }
 
-    function computePopoutRows(boss, now, nameMap) {
+    // opts.untimedAll：連「沒計時、也沒人認領」的頻道一起列出（「只看未計時」用）
+    function computePopoutRows(boss, now, nameMap, opts) {
       const cdSec = getBossCdSec(boss.id);
       const minMs = boss.minMin * 60 * 1000;
       const maxMs = boss.maxMin * 60 * 1000;
@@ -2061,7 +2073,7 @@
       for (let ch = 1; ch <= 60; ch++) {
         const info = getChannelData(boss.id, ch);
         const asg = getAssignList(boss.id, ch).map(e => ({ ...e, name: (nameMap && nameMap[e.uid]) || e.name }));
-        if (!info.killTime && !asg.length) continue;
+        if (!info.killTime && !asg.length && !(opts && opts.untimedAll)) continue;
         const mode = getBossCycleMode(boss, ch);
         if (!info.killTime) {
           // 還沒計時、但已經有人認領的頻道：先列出來，等擊殺後開始倒數
@@ -2211,10 +2223,15 @@
       // 線上的人用最新暱稱顯示；不在線上的用分配當時存的暱稱
       const nameMap = {};
       getOnlineUsers().forEach(u => { nameMap[u.uid] = u.name; });
-      let rows = computePopoutRows(popBoss, Date.now(), nameMap);
-      if (popMineOnly) rows = rows.filter(r => r.asg.some(e => e.uid === myUid));
-      if (!popSortByTime) rows.sort((a, b) => a.ch - b.ch); // computePopoutRows 預設已依重生時間排序
-      const sig = rows.map(r => `${r.ch}|${r.time}|${r.time2}|${r.cls}|${r.mode}|${r.solo ? 1 : 0}${r.steal ? 1 : 0}${r.unsure ? 1 : 0}|${r.asg.map(e => e.uid + ':' + e.name + ':' + (e.ally ? 1 : 0)).join('+')}`).join(',') + `|${popMineOnly ? 'M' : ''}|${myUid}`;
+      let rows = computePopoutRows(popBoss, Date.now(), nameMap, { untimedAll: popView === 'untimed' });
+      if (popView === 'mine') rows = rows.filter(r => r.asg.some(e => e.uid === myUid));
+      else if (popView === 'untimed') rows = rows.filter(r => r.idle);
+      if (!popSortByTime) rows.sort((a, b) => a.ch - b.ch); // computePopoutRows 預設已依重生時間排序（兩種篩選下排序都可切換）
+      // 篩選按鈕：顯示目前範圍與筆數
+      const viewLabel = popView === 'all' ? '全部' : (popView === 'mine' ? `我的 ${rows.length}` : `未計時 ${rows.length}`);
+      const viewBtn = popWin.document.getElementById('pmine');
+      if (viewBtn) { if (viewBtn.textContent !== viewLabel) viewBtn.textContent = viewLabel; viewBtn.classList.toggle('on', popView !== 'all'); }
+      const sig = rows.map(r => `${r.ch}|${r.time}|${r.time2}|${r.cls}|${r.mode}|${r.solo ? 1 : 0}${r.steal ? 1 : 0}${r.unsure ? 1 : 0}|${r.asg.map(e => e.uid + ':' + e.name + ':' + (e.ally ? 1 : 0)).join('+')}`).join(',') + `|${popView}|${myUid}`;
       if (sig !== popSig) {
         popSig = sig;
         list.innerHTML = rows.length
@@ -2235,9 +2252,11 @@
                 + `<button type="button" class="kill" data-act="kill" data-ch="${r.ch}">擊殺</button>`
                 + `<button type="button" class="rs" data-act="reset" data-ch="${r.ch}">重置</button></div>`;
             }).join('')
-          : (popMineOnly
+          : (popView === 'mine'
               ? '<div class="emptymsg">目前沒有分配給你的頻道<br>在頻道旁點「＋」就能認領</div>'
-              : '<div class="emptymsg">目前沒有計時中的頻道<br>在上方輸入頻道號碼，按「擊殺」開始計時</div>');
+              : popView === 'untimed'
+                ? '<div class="emptymsg">所有頻道都已經有計時記錄</div>'
+                : '<div class="emptymsg">目前沒有計時中的頻道<br>在上方輸入頻道號碼，按「擊殺」開始計時</div>');
         popFlash = null;
         popCdEls = {};
         list.querySelectorAll('.cd[data-ch]').forEach(el => { popCdEls[el.dataset.ch] = el; });
@@ -2315,7 +2334,7 @@
       doc.head.appendChild(style);
       doc.body.innerHTML = `
         <div class="hd"><span class="nm" id="ph"></span>
-          <button type="button" id="pmine" class="hsort" title="只顯示分配給我的頻道">只看我的</button>
+          <button type="button" id="pmine" class="hsort" title="切換顯示範圍：全部 → 只看分配給我的 → 只看尚未計時的（點一下循環切換）">全部</button>
           <button type="button" id="ps" class="hsort" title="切換排序方式：依重生時間／依頻道順序">排序：時間</button>
           <div class="seg"><button type="button" id="pa">全自動</button><button type="button" id="pm">全手動</button></div>
         </div>
@@ -2337,12 +2356,11 @@
       };
       doc.getElementById('pk').addEventListener('click', addKill);
 
-      // 只看我的：預設關閉
-      popMineOnly = false;
+      // 顯示範圍：全部 → 只看我的 → 只看未計時 → 回到全部（預設每次開啟都是「全部」）
+      popView = 'all';
       const pmine = doc.getElementById('pmine');
       pmine.addEventListener('click', () => {
-        popMineOnly = !popMineOnly;
-        pmine.classList.toggle('on', popMineOnly);
+        popView = popView === 'all' ? 'mine' : (popView === 'mine' ? 'untimed' : 'all');
         popSig = null;
         updatePopout();
       });
@@ -2410,11 +2428,11 @@
       let w = null;
       if (window.documentPictureInPicture) {
         try {
-          w = await window.documentPictureInPicture.requestWindow({ width: 400, height: 330 });
+          w = await window.documentPictureInPicture.requestWindow({ width: 330, height: 330 });
         } catch (e) { w = null; }
       }
       if (!w) {
-        w = window.open('', 'boss-popout', 'popup=yes,width=400,height=330,resizable=yes');
+        w = window.open('', 'boss-popout', 'popup=yes,width=330,height=330,resizable=yes');
         if (!w) { alert("瀏覽器擋住了小視窗，請允許此網站的彈出視窗後再試一次。"); popBoss = null; return; }
         w.document.open();
         w.document.write('<!doctype html><html><head><meta charset="utf-8"></head><body></body></html>');
@@ -2650,7 +2668,7 @@
 
     // 對方陣營的標籤：公會版看到盟友標「聯盟」，盟友版看到公會成員標「公會」
     function crossTag(u) {
-      if (ALLY_MODE) return u.ally ? null : '公會';
+      if (ALLY_MODE) return u.ally ? null : GUILD_LABEL;
       return u.ally ? '聯盟' : null;
     }
 
@@ -2659,7 +2677,7 @@
       document.getElementById('onlineCount').textContent = users.length;
       const crossN = users.filter(u => crossTag(u)).length;
       const crossEl = document.getElementById('onlineAllyCount');
-      if (crossEl) crossEl.textContent = crossN ? `（含${ALLY_MODE ? '公會' : '聯盟'} ${crossN} 人）` : '';
+      if (crossEl) crossEl.textContent = crossN ? `（含${ALLY_MODE ? GUILD_LABEL : '聯盟'} ${crossN} 人）` : '';
       list.innerHTML = '';
       if (!users.length) {
         const empty = document.createElement('div');
@@ -2692,7 +2710,7 @@
       const btn = document.getElementById('online-btn');
       if (btn) {
         const crossN = users.filter(u => crossTag(u)).length;
-        btn.textContent = `線上 ${users.length} 人` + (crossN ? `（${ALLY_MODE ? '公會' : '聯盟'} ${crossN}）` : '');
+        btn.textContent = `線上 ${users.length} 人` + (crossN ? `（${ALLY_MODE ? GUILD_LABEL : '聯盟'} ${crossN}）` : '');
       }
       const modal = document.getElementById('onlineModal');
       if (modal && modal.style.display === 'flex') fillOnlineList(users);
