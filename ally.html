@@ -25,7 +25,7 @@
 
     /* 左側邊欄整體 */
     #sidebar {
-      width: 13.75rem;
+      width: 18rem;
       background: linear-gradient(180deg, var(--cream), #f8f0de);
       border-right: 1px solid var(--line);
       box-shadow: 2px 0 0.5rem rgba(60, 40, 10, 0.06);
@@ -155,7 +155,7 @@
 
     /* 60 頻道網格容器 */
     .grid-wrapper { flex: 1; position: relative; width: 100%; height: 100%; overflow: hidden; }
-    #channel-grid { display: grid; grid-template-columns: repeat(10, 1fr); grid-template-rows: repeat(6, 1fr); gap: 0.4375rem; height: 100%; }
+    #channel-grid { display: grid; grid-template-columns: repeat(10, minmax(0, 1fr)); grid-template-rows: repeat(6, minmax(0, 1fr)); gap: 0.4375rem; height: 100%; }
 
     /* 頻道卡片內部排版 */
     .channel-card {
@@ -311,6 +311,9 @@
     .lv-badge { font-size: 0.75rem; font-weight: bold; color: #4a3519; background: var(--gold); border-radius: 0.5rem; padding: 0.0625rem 0.4375rem; vertical-align: middle; }
     .boss-item .lv { font-style: normal; font-size: 0.625rem; font-weight: bold; color: #fff; background: #8a7d66; border-radius: 0.5rem; padding: 0.0625rem 0.3125rem; margin-right: 0.3125rem; vertical-align: middle; }
     .boss-item.active .lv { background: rgba(255, 255, 255, 0.28); }
+    /* 未登入（迷霧狀態）時：左側野王列表一併模糊，工具與標題列按鈕不可操作 */
+    body.locked #sidebar .boss-list-container { filter: blur(0.4rem); pointer-events: none; user-select: none; }
+    body.locked #sidebar .tools-area, body.locked .header-btns, body.locked #cycle-switch { pointer-events: none; opacity: 0.5; }
     .hub-hint { font-size: 0.8125rem; color: #8a7d66; margin-bottom: 0.625rem; }
     .hub-list { display: flex; flex-direction: column; gap: 0.5rem; }
     .hub-list button { text-align: left; background: #fff; border: 1px solid var(--line); border-radius: 0.625rem; padding: 0.625rem 0.875rem; cursor: pointer; display: flex; flex-direction: column; gap: 0.125rem; font-size: 0.9375rem; color: var(--ink); }
@@ -328,7 +331,7 @@
     .bm-row.del .bm-del { background: #e02424; color: #fff; }
     .bm-add { margin-top: 0.125rem; padding: 0.4375rem; font-size: 0.875rem; }
     /* ===== 簡化版頻道卡片（四行：頻道＋狀態／巡迴＋時間／人員＋註記／按鈕） ===== */
-    .channel-card { padding: 0.3125rem 0.4375rem; gap: 0.1875rem; text-align: left; }
+    .channel-card { padding: 0.3125rem 0.4375rem; gap: 0.1875rem; text-align: left; min-width: 0; min-height: 0; overflow: hidden; }
     .cc-top { display: flex; align-items: baseline; justify-content: space-between; gap: 0.25rem; }
     .cc-top .ch-title { padding: 0; font-size: 0.9375rem; text-align: left; white-space: nowrap; }
     .cc-top .ch-status { margin: 0; font-size: 1rem; }
@@ -804,6 +807,7 @@
 
     function checkFogAuth() {
       const isUnlocked = sessionStorage.getItem(UNLOCK_KEY);
+      document.body.classList.toggle('locked', isUnlocked !== 'true');
       if (isUnlocked === 'true') {
         document.getElementById('fog-overlay').style.display = 'none';
       } else {
@@ -870,7 +874,22 @@
       db.ref(`rooms/${roomId}`).off();
       authReady.then(user => db.ref(`${ALLY_MODE ? 'allies' : 'members'}/${roomId}/${user.uid}`).remove()).catch(() => {});
       if (ALLY_MODE) stopAllyListeners();
+      clearLocalData();
       checkFogAuth();
+    }
+
+    // 鎖定／登出後，把畫面上殘留的資料清乾淨（計時、人數小計、聯盟分享標籤、資料庫野王清單）
+    function clearLocalData() {
+      timerCache = {}; bossCounts = {}; presenceCache = {}; allyPresenceCache = {};
+      bossCdCache = {}; bossCycleCache = {}; bossRangeCache = {};
+      bossDefsCache = ALLY_MODE ? allyDefs : {};
+      rebuildBossList();
+      initSidebar();
+      renderBossTitle();
+      refreshBossHeaderInfo();
+      renderChannels();
+      renderOnline();
+      if (ALLY_MODE) applyAllyEmptyState();
     }
 
     function changeTeamPassword() {
@@ -1340,7 +1359,7 @@
         const cdSec = getBossCdSec(boss.id);
         
         div.innerHTML = `
-          <span class="boss-name">${boss.level > 0 ? `<i class="lv" title="等級 ${boss.level}">Lv.${boss.level}</i>` : ''}${popEsc(boss.name)}${(!ALLY_MODE && timerCache.sharedBosses && timerCache.sharedBosses[boss.id]) ? '<i class="share-tag" title="已分享給聯盟">聯</i>' : ''}</span>
+          <span class="boss-name" title="${popEsc(boss.name)}">${boss.level > 0 ? `<i class="lv" title="等級 ${boss.level}">Lv.${boss.level}</i>` : ''}${popEsc(boss.name)}${(!ALLY_MODE && timerCache.sharedBosses && timerCache.sharedBosses[boss.id]) ? '<i class="share-tag" title="已分享給聯盟">聯</i>' : ''}</span>
           <div class="boss-info-group"><span class="boss-time-tag">${timeText}</span>${cdSec > 0 ? `<span class="boss-cd-tag">+${cdSec}s</span>` : ''}</div>
           <div class="boss-badges" data-boss-id="${boss.id}">
             <i class="boss-badge red" title="即將重生"></i>
